@@ -12,7 +12,7 @@ export function Layout({ children }: LayoutProps) {
   return (
     <div className="flex flex-col min-h-screen">
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-14 items-center px-4">
+        <div className="container mx-auto flex h-14 items-center px-4 max-w-7xl">
           <Link to="/" className="flex items-center space-x-2">
             <BookOpen className="h-6 w-6" />
             <span className="font-bold text-xl">ID Master</span>
@@ -20,8 +20,10 @@ export function Layout({ children }: LayoutProps) {
         </div>
       </header>
 
-      <main className="flex-1 container px-4 py-6 md:py-8 max-w-7xl mx-auto">
-        {children}
+      <main className="flex-1 w-full">
+        <div className="container mx-auto px-4 py-6 md:py-8 max-w-7xl">
+          {children}
+        </div>
       </main>
 
       <nav className="sticky bottom-0 z-50 w-full border-t bg-background md:hidden">
