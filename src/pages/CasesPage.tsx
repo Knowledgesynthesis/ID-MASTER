@@ -210,7 +210,7 @@ export function CasesPage() {
 
   if (selectedCase === null) {
     return (
-      <div className="space-y-6 max-w-4xl">
+      <div className="space-y-6 max-w-4xl mx-auto">
         <div>
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Clinical Cases</h1>
           <p className="text-muted-foreground mt-2">
@@ -291,7 +291,7 @@ export function CasesPage() {
   const isLastStep = currentStep === currentCase.steps.length - 1
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 max-w-4xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">{currentCase.title}</h1>

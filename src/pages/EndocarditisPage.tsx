@@ -115,7 +115,7 @@ export function EndocarditisPage() {
   )
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 max-w-4xl mx-auto">
       <div>
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
           Infective Endocarditis
