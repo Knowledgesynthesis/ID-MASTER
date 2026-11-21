@@ -1,383 +1,178 @@
 import { useState } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card'
+import { useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card'
 
-interface STICase {
-  id: number
-  presentation: string
-  labFindings: string[]
-  diagnosis: string
-  notes: string
+const cdc = 'https://www.cdc.gov/std/treatment-guidelines/'
+const source = {
+  syphilis: cdc + 'syphilis.htm',
+  neuro: cdc + 'neurosyphilis.htm',
+  tertiary: cdc + 'tertiary-syphilis.htm',
+  hpv: 'https://www.cdc.gov/hpv/hcp/vaccination-considerations/',
+  pregnancy: cdc + 'syphilis-pregnancy.htm',
+  congenital: cdc + 'congenital-syphilis.htm',
+  gc: cdc + 'gonorrhea-adults.htm',
+  neonatalGc: cdc + 'gonorrhea-neonates.htm',
+  ct: cdc + 'chlamydia.htm',
+  pid: cdc + 'pid.htm',
+  safeguarding: cdc + 'sexual-assault-children.htm',
+  hsv: cdc + 'herpes.htm',
+  trich: cdc + 'trichomoniasis.htm',
+  lgv: cdc + 'lgv.htm',
+  screening: cdc + 'screening-recommendations.htm',
+  adolescent: cdc + 'adolescents.htm',
 }
 
-const stiCases: STICase[] = [
+type Case = {
+  prompt: string
+  choices: readonly string[]
+  correct: number
+  explanation: string
+  href: string
+}
+
+const adultCases: Case[] = [
   {
-    id: 1,
-    presentation: 'Painless genital ulcer with firm borders',
-    labFindings: ['RPR: Positive (1:32)', 'FTA-ABS: Positive', 'Darkfield microscopy: Spirochetes visible'],
-    diagnosis: 'Primary Syphilis',
-    notes:
-      'Classic painless chancre. Both non-treponemal (RPR/VDRL) and treponemal (FTA-ABS/TP-PA) tests positive in primary syphilis.',
+    prompt: 'An adult has a new painless genital ulcer. A single initial RPR is nonreactive. What is the best interpretation?',
+    choices: ['Syphilis is excluded', 'Early syphilis remains possible; evaluate with both test types and the clinical context', 'A negative RPR proves genital herpes'],
+    correct: 1,
+    explanation: 'One serologic test alone can miss primary syphilis. Use treponemal and nontreponemal testing together, consider lesion testing where available, and use exposure risk and exam to guide presumptive treatment or repeat testing.',
+    href: source.syphilis,
   },
   {
-    id: 2,
-    presentation: 'Diffuse maculopapular rash including palms and soles',
-    labFindings: ['RPR: Positive (1:128)', 'FTA-ABS: Positive', 'History of painless ulcer 6 weeks ago'],
-    diagnosis: 'Secondary Syphilis',
-    notes:
-      'Systemic manifestations with characteristic rash. High RPR titers common. May have condyloma lata, mucous patches.',
+    prompt: 'A sexually active 20-year-old with pelvic pain has cervical motion tenderness and no more likely diagnosis on initial evaluation. Cervical GC/CT NAAT is negative. Does this rule out PID?',
+    choices: ['Yes, PID requires positive GC or CT', 'Yes, if the patient has no fever', 'No, treat presumptively if criteria are met while assessing alternative diagnoses'],
+    correct: 2,
+    explanation: 'PID is a clinical diagnosis. Cervical motion, uterine, or adnexal tenderness can meet the minimum exam criterion in an at-risk patient. A negative lower-tract NAAT does not exclude upper-tract infection. Evaluate for ectopic pregnancy and other urgent causes as indicated.',
+    href: source.pid,
   },
   {
-    id: 3,
-    presentation: 'Mucopurulent cervicitis on exam',
-    labFindings: [
-      'NAAT: Positive for Chlamydia trachomatis',
-      'NAAT: Positive for Neisseria gonorrhoeae',
-      'Urine pregnancy test: Negative',
-    ],
-    diagnosis: 'Chlamydia & Gonorrhea Co-infection',
-    notes:
-      'Common co-infection requiring treatment for both. Always test for both simultaneously. Screen for other STIs.',
-  },
-  {
-    id: 4,
-    presentation: 'Profuse frothy yellow-green vaginal discharge with odor',
-    labFindings: ['Wet mount: Motile trichomonads', 'pH > 4.5', 'Strawberry cervix on exam'],
-    diagnosis: 'Trichomoniasis',
-    notes:
-      'Trichomonas vaginalis infection. Treat patient and partner(s). Associated with increased HIV transmission risk.',
+    prompt: 'A patient received the recommended treatment for uncomplicated pharyngeal gonorrhea. Which follow-up is site-specific?',
+    choices: ['Test of cure at 7–14 days', 'No test of cure at any site', 'Only retest if symptoms recur'],
+    correct: 0,
+    explanation: 'Obtain a test of cure for pharyngeal infection at 7–14 days; a NAAT at 7 days has a higher false-positive risk. Routine test of cure is not needed after recommended therapy for uncomplicated urogenital or rectal gonorrhea. Retest for reinfection at about 3 months regardless of site.',
+    href: source.gc,
   },
 ]
 
-export function STIPage() {
-  const [selectedCase, setSelectedCase] = useState(0)
-  const [showDiagnosis, setShowDiagnosis] = useState(false)
-  const currentCase = stiCases[selectedCase]
+const pediatricCases: Case[] = [
+  {
+    prompt: 'A well-appearing newborn has an RPR equal to the birthing parent’s titer. The parent had confirmed syphilis and no documented treatment before delivery. What matters most?',
+    choices: ['An equal titer excludes congenital infection', 'Run the congenital syphilis pathway; a normal exam or equal titer is not enough to clear the infant', 'Order an infant treponemal antibody alone'],
+    correct: 1,
+    explanation: 'Interpret the infant’s exam and quantitative serum nontreponemal result using the same test type as the maternal delivery titer. Untreated maternal infection changes the scenario even when the neonatal titer is not fourfold higher. Cord blood and infant treponemal testing are not substitutes.',
+    href: source.congenital,
+  },
+  {
+    prompt: 'A prepubertal child has a positive gonorrhea test. What is the safest next step?',
+    choices: ['Use standard adult partner-management instructions', 'Repeat a detailed interview before notifying anyone', 'Involve experienced child-protection clinicians promptly and arrange appropriate confirmation and safeguarding'],
+    correct: 2,
+    explanation: 'Postnatally acquired gonorrhea is strongly indicative of abuse. Take a trauma-informed approach, coordinate specimen confirmation and care with an experienced team, and follow applicable reporting requirements. Do not delay required reporting while awaiting confirmation.',
+    href: source.safeguarding,
+  },
+  {
+    prompt: 'A 3-day-old has rapidly progressive purulent conjunctivitis. Which pathway should you consider urgently?',
+    choices: ['Neonatal gonococcal ophthalmia: urgent evaluation and systemic treatment if suspected', 'Routine adult conjunctivitis care with drops alone', 'Observe until the next scheduled newborn visit'],
+    correct: 0,
+    explanation: 'Gonococcal ophthalmia can present in the first days of life and threaten vision. Obtain appropriate microbiology, evaluate for disseminated infection, and follow the neonatal systemic therapy pathway; topical therapy alone is insufficient.',
+    href: source.neonatalGc,
+  },
+]
 
-  return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      <div>
-        <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
-          Sexually Transmitted Infections
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          Syphilis, chlamydia, gonorrhea, and more
-        </p>
-      </div>
+function Source({ href, children }: { href: string; children: string }) {
+  return <a className="text-primary underline underline-offset-4" href={href}>{children}</a>
+}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Interactive STI Pattern Matcher</CardTitle>
-          <CardDescription>
-            Practice recognizing common STI presentations and test patterns
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex gap-2 flex-wrap">
-            {stiCases.map((c, idx) => (
-              <Button
-                key={c.id}
-                variant={selectedCase === idx ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => {
-                  setSelectedCase(idx)
-                  setShowDiagnosis(false)
-                }}
-              >
-                Case {c.id}
-              </Button>
-            ))}
-          </div>
-
-          <div className="space-y-4">
-            <div className="p-4 border-2 rounded-lg">
-              <p className="font-semibold mb-2">Clinical Presentation:</p>
-              <p className="text-muted-foreground">{currentCase.presentation}</p>
-            </div>
-
-            <div>
-              <p className="font-semibold mb-2">Laboratory Findings:</p>
-              <div className="space-y-2">
-                {currentCase.labFindings.map((finding, idx) => (
-                  <div key={idx} className="p-2 border rounded-lg bg-muted/50">
-                    <p className="text-sm text-muted-foreground">{finding}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <Button
-              onClick={() => setShowDiagnosis(!showDiagnosis)}
-              className="w-full md:w-auto"
-            >
-              {showDiagnosis ? 'Hide' : 'Show'} Diagnosis & Notes
-            </Button>
-
-            {showDiagnosis && (
-              <div className="p-4 border rounded-lg bg-muted/50 space-y-2">
-                <p className="font-semibold text-lg">{currentCase.diagnosis}</p>
-                <p className="text-sm text-muted-foreground">{currentCase.notes}</p>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Syphilis - Stages & Testing</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <h3 className="font-semibold mb-2">Clinical Stages</h3>
-            <div className="space-y-2">
-              {[
-                {
-                  stage: 'Primary Syphilis',
-                  timing: '10-90 days post-exposure',
-                  features: 'Painless chancre (ulcer) at inoculation site, regional lymphadenopathy',
-                },
-                {
-                  stage: 'Secondary Syphilis',
-                  timing: '4-10 weeks after chancre',
-                  features:
-                    'Disseminated infection: rash (palms/soles), condyloma lata, mucous patches, lymphadenopathy, constitutional symptoms',
-                },
-                {
-                  stage: 'Latent Syphilis',
-                  timing: 'After secondary symptoms resolve',
-                  features:
-                    'Early latent (<1 year): recently acquired. Late latent (>1 year): longer duration. No symptoms but positive serology.',
-                },
-                {
-                  stage: 'Tertiary Syphilis',
-                  timing: 'Years to decades later',
-                  features: 'Cardiovascular (aortitis), gummatous (granulomas), neurosyphilis',
-                },
-              ].map((item) => (
-                <div key={item.stage} className="p-3 border rounded-lg">
-                  <div className="flex items-start justify-between mb-1">
-                    <p className="font-medium text-sm">{item.stage}</p>
-                    <span className="text-xs text-muted-foreground">{item.timing}</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">{item.features}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <h3 className="font-semibold mb-2">Syphilis Testing Strategy</h3>
-            <div className="space-y-3">
-              <div className="p-3 border rounded-lg bg-blue-500/10">
-                <p className="font-medium text-sm">Non-Treponemal Tests (Screening)</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  <span className="font-medium">RPR, VDRL:</span> Detect antibodies to cardiolipin.
-                  Quantitative titers useful for monitoring treatment response. May have false
-                  positives (pregnancy, autoimmune disease). Decline after treatment.
-                </p>
-              </div>
-              <div className="p-3 border rounded-lg bg-blue-500/10">
-                <p className="font-medium text-sm">Treponemal Tests (Confirmatory)</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  <span className="font-medium">FTA-ABS, TP-PA:</span> Detect specific antibodies to
-                  T. pallidum. Remain positive for life (scar). Used to confirm positive RPR/VDRL.
-                </p>
-              </div>
-              <div className="p-3 border rounded-lg">
-                <p className="font-medium text-sm">Interpretation</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Active syphilis: Both non-treponemal and treponemal tests positive with appropriate
-                  clinical context. Treated/past syphilis: Treponemal positive, non-treponemal may be
-                  negative or low titer.
-                </p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Chlamydia & Gonorrhea</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <h3 className="font-semibold mb-2">Clinical Presentations</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="p-3 border rounded-lg">
-                <p className="font-medium text-sm">Chlamydia trachomatis</p>
-                <ul className="text-xs text-muted-foreground mt-1 space-y-1 list-disc list-inside">
-                  <li>Often asymptomatic (especially women)</li>
-                  <li>Urethritis, cervicitis</li>
-                  <li>Complications: PID, epididymitis, reactive arthritis</li>
-                  <li>Most common reportable STI</li>
-                </ul>
-              </div>
-              <div className="p-3 border rounded-lg">
-                <p className="font-medium text-sm">Neisseria gonorrhoeae</p>
-                <ul className="text-xs text-muted-foreground mt-1 space-y-1 list-disc list-inside">
-                  <li>Purulent discharge common in men</li>
-                  <li>May be asymptomatic in women</li>
-                  <li>Complications: PID, disseminated gonococcal infection</li>
-                  <li>Increasing antibiotic resistance</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <h3 className="font-semibold mb-2">Testing</h3>
-            <div className="p-3 border rounded-lg bg-muted/50">
-              <p className="font-medium text-sm">Nucleic Acid Amplification Test (NAAT)</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Gold standard. High sensitivity and specificity. Can use urine (first-catch),
-                endocervical, urethral, pharyngeal, or rectal specimens. Test for both chlamydia and
-                gonorrhea simultaneously.
-              </p>
-            </div>
-          </div>
-
-          <div>
-            <h3 className="font-semibold mb-2">Key Principles</h3>
-            <ul className="space-y-2 text-sm">
-              {[
-                'High rate of co-infection - always test and treat for both',
-                'Partner notification and treatment essential',
-                'Retest 3 months after treatment (high reinfection rate)',
-                'Screen all sexually active women <25 years annually',
-                'Test all sites of exposure (genital, pharyngeal, rectal)',
-              ].map((principle) => (
-                <li key={principle} className="flex items-start space-x-2">
-                  <div className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0" />
-                  <span className="text-muted-foreground">{principle}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Pelvic Inflammatory Disease (PID)</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Infection of upper genital tract (uterus, fallopian tubes, ovaries) usually from
-            ascending chlamydia or gonorrhea.
-          </p>
-
-          <div>
-            <h3 className="font-semibold mb-2">Clinical Diagnosis (Low Threshold)</h3>
-            <div className="p-3 border rounded-lg bg-yellow-500/10">
-              <p className="text-sm">
-                <span className="font-medium">Minimum criteria:</span> Sexually active woman with
-                pelvic/lower abdominal pain + cervical motion tenderness OR uterine tenderness OR
-                adnexal tenderness
-              </p>
-            </div>
-          </div>
-
-          <div>
-            <h3 className="font-semibold mb-2">Additional Supportive Criteria</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              {[
-                'Oral temperature >38.3°C',
-                'Mucopurulent cervical discharge',
-                'WBCs on wet prep',
-                'Elevated ESR or CRP',
-                'Positive NAAT for GC or CT',
-                'Tubo-ovarian abscess on imaging',
-              ].map((criteria) => (
-                <div key={criteria} className="flex items-start space-x-2 text-sm">
-                  <div className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0" />
-                  <span className="text-muted-foreground">{criteria}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <h3 className="font-semibold mb-2">Complications</h3>
-            <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-              <li>Tubo-ovarian abscess</li>
-              <li>Chronic pelvic pain</li>
-              <li>Ectopic pregnancy (from tubal scarring)</li>
-              <li>Infertility</li>
-              <li>Fitz-Hugh-Curtis syndrome (perihepatitis)</li>
-            </ul>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Other Important STIs</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <div className="p-3 border rounded-lg">
-              <p className="font-medium text-sm">Trichomoniasis</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Trichomonas vaginalis (protozoan). Frothy discharge, strawberry cervix. Wet mount
-                shows motile trichomonads. Treat patient and partners.
-              </p>
-            </div>
-            <div className="p-3 border rounded-lg">
-              <p className="font-medium text-sm">Herpes Simplex Virus (HSV)</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Painful grouped vesicles/ulcers. Type-specific serology or PCR. Suppressive therapy
-                for recurrent outbreaks. No cure.
-              </p>
-            </div>
-            <div className="p-3 border rounded-lg">
-              <p className="font-medium text-sm">Human Papillomavirus (HPV)</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Most common STI. Low-risk types: genital warts. High-risk types: cervical cancer.
-                Vaccine available (Gardasil 9).
-              </p>
-            </div>
-            <div className="p-3 border rounded-lg">
-              <p className="font-medium text-sm">Lymphogranuloma Venereum (LGV)</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Chlamydia trachomatis serovars L1-L3. Painless ulcer → painful
-                lymphadenopathy/buboes → proctocolitis. Endemic in some regions, MSM.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Partner Management</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Partner notification and treatment is essential to prevent reinfection and ongoing
-              transmission.
-            </p>
-            <div className="space-y-2">
-              <div className="p-3 border rounded-lg">
-                <p className="font-medium text-sm">Expedited Partner Therapy (EPT)</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Providing medication or prescription to patient for their partner(s) without
-                  examining partner. Legal in many states for chlamydia/gonorrhea.
-                </p>
-              </div>
-              <div className="p-3 border rounded-lg">
-                <p className="font-medium text-sm">Lookback Period</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Notify partners from past 60 days (if symptomatic) or past 6 months (if
-                  asymptomatic) for chlamydia/gonorrhea.
-                </p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+function CaseSet({ cases }: { cases: Case[] }) {
+  const [index, setIndex] = useState(0)
+  const [answer, setAnswer] = useState<number | null>(null)
+  const active = cases[index]
+  return <div className="space-y-4">
+    <div className="flex flex-wrap gap-2" role="group" aria-label="Select a case">
+      {cases.map((item, i) => <Button size="sm" key={item.prompt} variant={i === index ? 'default' : 'outline'} aria-pressed={i === index} onClick={() => { setIndex(i); setAnswer(null) }}>Case {i + 1}</Button>)}
     </div>
-  )
+    <p className="font-medium">{active.prompt}</p>
+    <div className="grid gap-2" role="group" aria-label="Select an answer">
+      {active.choices.map((choice, i) => <Button key={choice} variant={answer === i ? 'default' : 'outline'} className="h-auto min-h-10 justify-start text-left whitespace-normal" aria-pressed={answer === i} onClick={() => setAnswer(i)}>{choice}</Button>)}
+    </div>
+    {answer !== null && <div className="rounded-md border p-3 space-y-1 text-sm" role="status">
+      <p className="font-semibold">{answer === active.correct ? 'Correct' : 'Best answer'}: {active.choices[active.correct]}</p>
+      <p>{active.explanation}</p>
+      <Source href={active.href}>CDC guidance behind the answer</Source>
+    </div>}
+  </div>
+}
+
+export function STIPage() {
+  const [params, setParams] = useSearchParams()
+  const pediatric = params.get('audience') === 'pediatric'
+  function setAudience(audience: 'adult' | 'pediatric') {
+    setParams(previous => { const next = new URLSearchParams(previous); next.set('audience', audience); return next })
+  }
+
+  return <div className="space-y-6 max-w-4xl mx-auto">
+    <header>
+      <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Sexually Transmitted Infections</h1>
+      <p className="text-muted-foreground mt-2">Choose the right test and follow-up for the exposure, anatomic site, and age.</p>
+    </header>
+    <div className="flex flex-wrap gap-2" role="group" aria-label="Population">
+      <Button variant={!pediatric ? 'default' : 'outline'} aria-pressed={!pediatric} onClick={() => setAudience('adult')}>Adult / adolescent</Button>
+      <Button variant={pediatric ? 'default' : 'outline'} aria-pressed={pediatric} onClick={() => setAudience('pediatric')}>Pediatric / neonatal</Button>
+    </div>
+    <Card>
+      <CardHeader><CardTitle>{pediatric ? 'Congenital, neonatal and prepubertal cases' : 'Adult and adolescent decision cases'}</CardTitle><CardDescription>Pick an action before reading the reasoning.</CardDescription></CardHeader>
+      <CardContent><CaseSet key={pediatric ? 'pediatric' : 'adult'} cases={pediatric ? pediatricCases : adultCases} /></CardContent>
+    </Card>
+    {pediatric ? <>
+      <Card>
+        <CardHeader><CardTitle>Congenital and neonatal clues</CardTitle></CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <p><strong>Syphilis:</strong> document the maternal stage, treatment regimen, timing and reinfection risk. Penicillin G is the only proven therapy to treat fetal infection and prevent congenital syphilis during pregnancy. Use the neonatal scenario table for evaluation, treatment and follow-up. <Source href={source.pregnancy}>Pregnancy</Source> · <Source href={source.congenital}>Neonatal management</Source></p>
+          <p><strong>Chlamydia:</strong> consider perinatal infection in conjunctivitis within 30 days of birth or afebrile subacute pneumonia at 1–3 months. Eye prophylaxis against gonorrhea does not prevent chlamydial ophthalmia; a symptomatic infant needs evaluation and age-specific systemic therapy when indicated. <Source href={source.ct}>CDC chlamydia in infants</Source></p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader><CardTitle>Prepubertal testing is not adult screening</CardTitle></CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <p>Use an experienced, trauma-informed team for examination, specimen selection and interpretation. Some infections can be perinatal or have other explanations; interpretation and reporting depend on the pathogen and circumstances. <Source href={source.safeguarding}>CDC child safeguarding guidance</Source></p>
+          <p>For sexually active adolescents, switch to the adult/adolescent track for screening. Do not apply that guidance to prepubertal children.</p>
+        </CardContent>
+      </Card>
+    </> : <>
+      <Card>
+        <CardHeader><CardTitle>Syphilis: syndrome, serology, stage</CardTitle></CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <p><strong>Primary:</strong> classically a painless chancre, but lesions can be multiple, atypical or painful. <strong>Secondary:</strong> systemic illness with findings such as diffuse rash (sometimes palms and soles), mucocutaneous lesions, or lymphadenopathy. <strong>Latent:</strong> reactive serology without manifestations; titer alone does not establish early latent disease. <Source href={source.syphilis}>CDC testing and stages</Source></p>
+          <p><strong>Tertiary disease:</strong> gummatous or cardiovascular involvement requires a separate workup. <Source href={source.tertiary}>CDC tertiary syphilis guidance</Source></p>
+          <p><strong>Look for eyes, ears and neurologic features at any stage.</strong> Visual or auditory symptoms change the evaluation and management. <Source href={source.neuro}>CDC neurosyphilis, ocular and otic guidance</Source></p>
+          <p>Follow quantitative RPR or VDRL with the same test type, preferably in the same laboratory. A fourfold titer change is two dilutions (for example, 1:32 to 1:8). Treponemal tests often remain reactive after treatment and do not measure treatment response. <Source href={source.syphilis}>CDC serology</Source></p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader><CardTitle>GC/CT: test exposed sites, then close the loop</CardTitle></CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <p>Both infections can be asymptomatic or present with urethritis or cervicitis. Discharge appearance does not reliably distinguish them.</p>
+          <p>Use site-appropriate NAATs based on exposure and recommendations. If treating gonorrhea and chlamydia has not been excluded, add age- and pregnancy-appropriate chlamydia treatment; do not add it automatically after exclusion. Suspected gonorrhea treatment failure warrants culture and susceptibility testing. <Source href={source.gc}>Gonorrhea</Source> · <Source href={source.ct}>Chlamydia</Source></p>
+          <p><strong>Partners:</strong> for gonorrhea and chlamydia, evaluate partners from the 60 days before symptom onset or diagnosis; include the most recent partner even if exposure was earlier. Expedited partner therapy depends on law and clinical context. Retest about 3 months after treatment. <Source href={source.gc}>CDC partner and follow-up guidance</Source></p>
+          <p><strong>Adolescent overlap:</strong> screen sexually active women younger than 25 annually for chlamydia and gonorrhea; screen those 25 or older when at increased risk. Other populations have anatomy-, exposure- and risk-based guidance. Provide developmentally appropriate confidential care within local rules. <Source href={source.screening}>Screening table</Source> · <Source href={source.adolescent}>Adolescent guidance</Source></p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader><CardTitle>PID: reassess after initial treatment</CardTitle></CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <p>Reassess if there is no improvement within 72 hours of outpatient treatment. Pregnancy, suspected tubo-ovarian abscess, severe illness, or inability to exclude a surgical emergency are reasons to consider inpatient care. Use the same admission criteria for adolescents and adults. <Source href={source.pid}>CDC PID criteria and follow-up</Source></p>
+          <p>Delayed treatment increases the risk of sequelae such as infertility and ectopic pregnancy. Do not wait for definitive microbiology to treat when clinical criteria are met. <Source href={source.pid}>CDC diagnostic threshold</Source></p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader><CardTitle>Other STI testing and prevention pearls</CardTitle></CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <p><strong>Genital HSV:</strong> when lesions are present, use a lesion NAAT (or culture if NAAT is unavailable), not routine serologic screening. <Source href={source.hsv}>HSV testing</Source></p>
+          <p><strong>Trichomoniasis:</strong> classic discharge or cervical findings are not required. A negative wet mount does not reliably rule it out. <Source href={source.trich}>Testing options</Source></p>
+          <p><strong>HPV:</strong> vaccination prevents new infections, not existing lesions. Review routine pediatric and adolescent vaccination, catch-up through age 26, and shared decision-making for selected adults aged 27–45. <Source href={source.hpv}>CDC HPV vaccination</Source></p>
+          <p><strong>LGV:</strong> proctocolitis can dominate the presentation; a recalled transient ulcer is not required. <Source href={source.lgv}>CDC LGV guidance</Source></p>
+        </CardContent>
+      </Card>
+    </>}
+  </div>
 }

@@ -1,240 +1,109 @@
+import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
+
+const bone = 'https://www.idsociety.org/practice-guideline/bone-and-joint-infections---osteomyelitis/'
+const arthritis = 'https://www.idsociety.org/practice-guideline/acute-bacterial-arthritis-in-pediatrics2/'
+const sanjo = 'https://jbji.copernicus.org/articles/8/29/2023/'
+const spine = 'https://www.idsociety.org/practice-guideline/vertebral-osteomyelitis/'
+const foot = 'https://www.idsociety.org/practice-guideline/diabetic-foot-infections/'
+
+const cases = [
+  {
+    audience: 'Pediatric',
+    stem: 'A stable 2-year-old has fever, refusal to bear weight, severe pain with passive hip movement, and a hip effusion on ultrasound. What is the next diagnostic step?',
+    choices: [
+      ['Repeat ultrasound in a week', 'Ultrasound detects fluid, not its cause. The presentation needs urgent joint assessment.'],
+      ['Draw blood cultures and arrange urgent aspiration', 'Correct. In a stable child, obtain blood cultures and promptly sample the joint before antibiotics when feasible. If the child becomes ill or disease progresses quickly, do not wait for aspiration to start therapy.'],
+      ['Treat as transient synovitis based on age', 'Age does not separate transient synovitis from bacterial arthritis. Fever and refusal to bear weight are concerning.'],
+    ],
+    answer: 1,
+    source: arthritis,
+  },
+  {
+    audience: 'Adult',
+    stem: 'An adult has new focal back pain two weeks after S. aureus bloodstream infection. Plain spinal films are unrevealing. Which study best evaluates possible vertebral osteomyelitis?',
+    choices: [
+      ['Spine MRI', 'Correct. Recent S. aureus bacteremia and focal back pain raise suspicion even with normal plain films. New neurologic deficits warrant emergency evaluation for compression.'],
+      ['Repeat plain films alone', 'Early plain films may miss vertebral infection. Do not rely on them when suspicion remains high.'],
+      ['No further workup without fever', 'Vertebral osteomyelitis can present without fever. Recent bacteremia changes the pretest probability.'],
+    ],
+    answer: 0,
+    source: spine,
+  },
+] as const
+
+function Source({ href, children }: { href: string; children: string }) {
+  return <a href={href} className="text-primary underline underline-offset-2">{children}</a>
+}
 
 export function OsteomyelitisPage() {
+  const [params] = useSearchParams()
+  return <OsteomyelitisLesson key={params.get('audience')} initialCase={params.get('audience') === 'adult' ? 1 : 0} />
+}
+
+function OsteomyelitisLesson({ initialCase }: { initialCase: number }) {
+  const [active, setActive] = useState(initialCase)
+  const [selected, setSelected] = useState<number | null>(null)
+  const current = cases[active]
+
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      <div>
-        <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
-          Osteomyelitis & Septic Arthritis
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          Diagnostic pathways and organism patterns
-        </p>
-      </div>
-
+    <div className="mx-auto max-w-4xl space-y-6">
+      <header>
+        <h1 className="text-3xl font-bold tracking-tight md:text-4xl">Osteomyelitis &amp; septic arthritis</h1>
+        <p className="mt-2 text-muted-foreground">Localize bone versus joint, get the right specimens, and match duration to the syndrome.</p>
+      </header>
       <Card>
-        <CardHeader>
-          <CardTitle>Osteomyelitis Classification</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="p-4 border rounded-lg">
-              <h3 className="font-semibold mb-2">Hematogenous Osteomyelitis</h3>
-              <p className="text-sm text-muted-foreground mb-2">
-                Spread via bloodstream; most common in children and elderly
-              </p>
-              <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                <li>Children: typically metaphysis of long bones</li>
-                <li>Adults: typically vertebral bodies (vertebral osteomyelitis)</li>
-                <li>Risk factors: bacteremia, IVDU, immunosuppression</li>
-              </ul>
-            </div>
-
-            <div className="p-4 border rounded-lg">
-              <h3 className="font-semibold mb-2">Contiguous Osteomyelitis</h3>
-              <p className="text-sm text-muted-foreground mb-2">
-                Direct spread from adjacent infection or trauma
-              </p>
-              <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                <li>Post-traumatic or post-surgical</li>
-                <li>Diabetic foot infections</li>
-                <li>Pressure ulcers</li>
-                <li>Dental infections spreading to mandible</li>
-              </ul>
-            </div>
-          </div>
+        <CardHeader><CardTitle>Localize first · All ages</CardTitle></CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          <p><strong>Bone:</strong> focal bony pain or tenderness, refusal to bear weight in children, or back pain after bacteremia in adults. Ask whether infection spread hematogenously, through a wound, or after surgery or trauma. Adjacent bone and joint infection can coexist.</p>
+          <p><strong>Joint:</strong> an acutely painful joint with marked pain on passive motion raises concern for bacterial arthritis. Do not use a single synovial white-count threshold to make or exclude the diagnosis. Crystals can coexist with infection.</p>
+          <p><strong>Urgency:</strong> involve orthopedics early for a suspected infected joint. Obtain cultures first if feasible, but do not wait for sampling or imaging to start treatment when the patient is ill-appearing, septic, or deteriorating.</p>
+          <p><Source href={arthritis}>PIDS/IDSA pediatric arthritis guideline (2023)</Source> · <Source href={sanjo}>SANJO native-joint guideline (2023)</Source></p>
         </CardContent>
       </Card>
-
       <Card>
-        <CardHeader>
-          <CardTitle>Common Organisms by Scenario</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {[
-              {
-                scenario: 'Hematogenous (Adults)',
-                organisms: 'S. aureus (including MRSA), E. coli, Pseudomonas',
-              },
-              {
-                scenario: 'Hematogenous (Children)',
-                organisms: 'S. aureus, Kingella kingae, Group A Strep',
-              },
-              {
-                scenario: 'Vertebral Osteomyelitis',
-                organisms: 'S. aureus, E. coli, TB (Pott disease)',
-              },
-              {
-                scenario: 'IVDU',
-                organisms: 'S. aureus, Pseudomonas, Candida',
-              },
-              {
-                scenario: 'Diabetic Foot',
-                organisms: 'Polymicrobial: S. aureus, Streptococci, Anaerobes, Gram-negatives',
-              },
-              {
-                scenario: 'Prosthetic Joint',
-                organisms: 'Coagulase-negative Staph, S. aureus, Streptococci',
-              },
-              {
-                scenario: 'Sickle Cell Disease',
-                organisms: 'Salmonella, S. aureus',
-              },
-            ].map((item) => (
-              <div key={item.scenario} className="p-3 border rounded-lg">
-                <p className="font-medium text-sm">{item.scenario}</p>
-                <p className="text-xs text-muted-foreground mt-1">{item.organisms}</p>
-              </div>
-            ))}
-          </div>
+        <CardHeader><CardTitle>Pediatric · Acute hematogenous bone and native joint infection</CardTitle></CardHeader>
+        <CardContent className="space-y-4 text-sm">
+          <section className="space-y-2">
+            <h3 className="font-semibold">Suspected acute hematogenous osteomyelitis</h3>
+            <p>Get blood cultures and a baseline CRP; follow the clinical response and CRP trend. Plain radiographs can help find alternatives but can be normal early. Use MRI when further imaging is needed to define disease or complications. <em>S. aureus</em> is the main empiric target; consider MRSA based on local susceptibility and patient factors.</p>
+            <p>For uncomplicated, responding <em>S. aureus</em> disease, the guideline suggests <strong>3–4 weeks total</strong>; complications and some organisms need longer. Transition to active, tolerated oral therapy when clinically appropriate rather than defaulting to prolonged IV access.</p>
+            <p><Source href={bone}>PIDS/IDSA pediatric acute hematogenous osteomyelitis guideline (2021)</Source></p>
+          </section>
+          <section className="space-y-2 border-t pt-4">
+            <h3 className="font-semibold">Suspected acute bacterial arthritis</h3>
+            <p>Ultrasound can detect a deep effusion, especially at the hip or shoulder. In a stable child, obtain blood and prompt synovial cultures before antibiotics when feasible. Use MRI when adjacent osteomyelitis or deep infection is a concern. In children <strong>6–48 months</strong>, consider empiric <em>Kingella kingae</em> activity in addition to staphylococcal coverage.</p>
+            <p>In primary bacterial arthritis <strong>without adjacent osteomyelitis</strong>, a rapid clinical response and falling CRP by the end of week one may support <strong>10–14 days total</strong> for common pathogens. Slow response, inadequate source control, certain pathogens, or adjacent bone infection change the plan.</p>
+            <p>Neonates need a separate age-specific approach; do not extrapolate these courses or empiric choices to them.</p>
+            <p><Source href={arthritis}>PIDS/IDSA pediatric guideline: imaging, aspiration, age and duration (2023)</Source></p>
+          </section>
         </CardContent>
       </Card>
-
       <Card>
-        <CardHeader>
-          <CardTitle>Diagnostic Approach</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div>
-              <h3 className="font-semibold mb-2">Imaging</h3>
-              <div className="space-y-2">
-                <div className="p-3 border rounded-lg">
-                  <p className="font-medium text-sm">Plain Radiographs</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    First-line but insensitive early (changes visible after 10-14 days). Look for
-                    periosteal elevation, lytic lesions, sclerosis.
-                  </p>
-                </div>
-                <div className="p-3 border rounded-lg bg-blue-500/10">
-                  <p className="font-medium text-sm">MRI (Preferred)</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Most sensitive and specific. Detects early marrow edema, soft tissue involvement,
-                    and complications (abscess). Gold standard when available.
-                  </p>
-                </div>
-                <div className="p-3 border rounded-lg">
-                  <p className="font-medium text-sm">CT Scan</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Better for cortical bone detail and sequestra. Useful when MRI contraindicated.
-                  </p>
-                </div>
-                <div className="p-3 border rounded-lg">
-                  <p className="font-medium text-sm">Nuclear Medicine</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Bone scan, labeled WBC scan. Useful for multifocal disease or prosthetic joints.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <h3 className="font-semibold mb-2">Laboratory & Microbiology</h3>
-              <ul className="space-y-2 text-sm">
-                {[
-                  'Blood cultures (often positive in hematogenous spread)',
-                  'ESR and CRP (elevated but nonspecific; useful for monitoring treatment)',
-                  'Bone biopsy/aspiration for culture (gold standard for organism identification)',
-                  'Avoid superficial swab cultures (unreliable, contaminated)',
-                ].map((item) => (
-                  <li key={item} className="flex items-start space-x-2">
-                    <div className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0" />
-                    <span className="text-muted-foreground">{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
+        <CardHeader><CardTitle>Adult · Spine, native joint and diabetes-related foot infection</CardTitle></CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          <p><strong>Native vertebral osteomyelitis:</strong> new focal back pain and recent bacteremia merit spine MRI and blood cultures. A compatible MRI and recent <em>S. aureus</em> bacteremia often establish the cause without biopsy. New neurologic deficits or hemodynamic instability require urgent action. Most bacterial cases receive six weeks of antimicrobial therapy. <Source href={spine}>IDSA native vertebral osteomyelitis guideline (2015)</Source></p>
+          <p><strong>Native septic arthritis:</strong> promptly aspirate and send fluid for culture, cell count/differential and crystals as appropriate. A count &gt;50,000 cells/µL supports the diagnosis but does not confirm it; &lt;25,000 cells/µL does not exclude it. A prosthetic joint has a separate diagnostic pathway. <Source href={sanjo}>SANJO native-joint guideline (2023)</Source></p>
+          <p><strong>Diabetes-related foot osteomyelitis:</strong> start with the clinical exam, probe-to-bone, plain radiographs and inflammatory markers as appropriate. Get MRI if uncertainty remains; when obtaining culture for suspected bone infection, bone sampling is preferred to a superficial swab. <Source href={foot}>IWGDF/IDSA foot infection guideline (2023)</Source></p>
         </CardContent>
       </Card>
-
       <Card>
-        <CardHeader>
-          <CardTitle>Septic Arthritis</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="p-4 border-2 rounded-lg bg-red-500/10 border-red-500/20">
-              <p className="font-semibold">Key Point: Joint Aspiration is Mandatory</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Hot, swollen, painful joint with decreased range of motion requires synovial fluid
-                analysis to rule out septic arthritis.
-              </p>
-            </div>
-
-            <div>
-              <h3 className="font-semibold mb-2">Synovial Fluid Analysis</h3>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left p-2">Parameter</th>
-                      <th className="text-left p-2">Septic Arthritis</th>
-                      <th className="text-left p-2">Non-septic Inflammatory</th>
-                    </tr>
-                  </thead>
-                  <tbody className="text-muted-foreground">
-                    <tr className="border-b">
-                      <td className="p-2 font-medium text-foreground">WBC count</td>
-                      <td className="p-2">{'>'}50,000 (often {'>'}100,000)</td>
-                      <td className="p-2">2,000-50,000</td>
-                    </tr>
-                    <tr className="border-b">
-                      <td className="p-2 font-medium text-foreground">PMN %</td>
-                      <td className="p-2">{'>'}90%</td>
-                      <td className="p-2">50-90%</td>
-                    </tr>
-                    <tr className="border-b">
-                      <td className="p-2 font-medium text-foreground">Gram stain</td>
-                      <td className="p-2">Positive in ~50%</td>
-                      <td className="p-2">Negative</td>
-                    </tr>
-                    <tr className="border-b">
-                      <td className="p-2 font-medium text-foreground">Culture</td>
-                      <td className="p-2">Often positive (70-90%)</td>
-                      <td className="p-2">Negative</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div>
-              <h3 className="font-semibold mb-2">Common Organisms in Septic Arthritis</h3>
-              <div className="space-y-2">
-                {[
-                  { population: 'Adults (non-gonococcal)', organism: 'S. aureus (most common)' },
-                  { population: 'Young sexually active adults', organism: 'Neisseria gonorrhoeae' },
-                  { population: 'Prosthetic joint infection', organism: 'S. aureus, CoNS, Streptococci' },
-                  { population: 'IVDU', organism: 'S. aureus, Pseudomonas, Candida' },
-                  { population: 'Immunocompromised', organism: 'Gram-negatives, atypical organisms' },
-                ].map((item) => (
-                  <div key={item.population} className="p-3 border rounded-lg">
-                    <p className="font-medium text-sm">{item.population}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{item.organism}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <h3 className="font-semibold mb-2">Management Principles</h3>
-              <ul className="space-y-2 text-sm">
-                {[
-                  'Urgent drainage (arthrocentesis or surgical washout)',
-                  'Empiric antibiotics after cultures obtained',
-                  'Most require surgical drainage (especially hip, shoulder)',
-                  'Serial aspirations for monitoring/repeat drainage',
-                  'Prolonged antibiotic course (typically 3-4 weeks)',
-                ].map((principle) => (
-                  <li key={principle} className="flex items-start space-x-2">
-                    <div className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0" />
-                    <span className="text-muted-foreground">{principle}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+        <CardHeader><CardTitle>Choose the next diagnostic move</CardTitle></CardHeader>
+        <CardContent className="space-y-4 text-sm">
+          <div className="flex flex-wrap gap-2">
+            {cases.map((item, index) => <Button key={item.audience} variant={active === index ? 'default' : 'outline'} aria-pressed={active === index} onClick={() => { setActive(index); setSelected(null) }}>{item.audience} case</Button>)}
+          </div>
+          <p className="font-medium">{current.stem}</p>
+          <div className="grid gap-2">
+            {current.choices.map(([choice], index) => <Button key={choice} variant="outline" className="h-auto min-h-10 justify-start whitespace-normal py-2 text-left" aria-pressed={selected === index} onClick={() => setSelected(index)}>{choice}</Button>)}
+          </div>
+          <div aria-live="polite">
+            {selected !== null && <div className="space-y-2 rounded-lg border bg-muted p-3">
+              <p>{current.choices[selected][1]}</p>
+              {selected === current.answer && <p><Source href={current.source}>Read the source recommendation</Source></p>}
+            </div>}
           </div>
         </CardContent>
       </Card>

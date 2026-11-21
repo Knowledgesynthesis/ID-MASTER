@@ -1,292 +1,137 @@
 import { useState } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card'
+import { useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
-import { CheckCircle, XCircle } from 'lucide-react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card'
 
-const hbvScenarios = [
+const hbv = 'https://www.cdc.gov/hepatitis-b/hcp/diagnosis-testing/index.html'
+const hbvPerinatal = 'https://www.cdc.gov/hepatitis-b/hcp/perinatal-provider-overview/'
+const hcv = 'https://www.cdc.gov/hepatitis-c/hcp/diagnosis-testing/'
+const hcvPerinatal = 'https://www.cdc.gov/mmwr/volumes/72/rr/rr7204a1.htm'
+const hcvAdults = 'https://www.hcvguidelines.org/guidance/simplified-hcv-treatment-for-treatment-naive-adults-without-cirrhosis/'
+const hcvChildren = 'https://www.hcvguidelines.org/guidance/hcv-in-children/'
+
+type Drill = {
+  prompt: string
+  choices: readonly string[]
+  correct: number
+  why: string
+  source: string
+  markers?: readonly string[]
+}
+
+const names = ['HBsAg', 'Total anti-HBc', 'Anti-HBs', 'IgM anti-HBc']
+const interpretations = ['Vaccine immunity', 'Resolved infection', 'Acute infection', 'Chronic infection', 'Not enough information to determine phase', 'Isolated core antibody', 'Susceptibility likely']
+const hbvDrills: Drill[] = [
+  { prompt: 'Routine testing after a documented complete vaccine series.', markers: ['Negative', 'Negative', 'Positive', 'Not tested'], choices: interpretations, correct: 0, why: 'Vaccination produces surface antibody, not core antibody. A negative anti-HBs years after vaccination does not by itself establish loss of protection.', source: hbv },
+  { prompt: 'History of remote hepatitis B with no current symptoms.', markers: ['Negative', 'Positive', 'Positive', 'Not tested'], choices: interpretations, correct: 1, why: 'Core antibody indicates prior infection. Surface antibody plus a negative surface antigen fits resolved infection. Assess reactivation risk before immunosuppression.', source: hbv },
+  { prompt: 'Jaundice shortly after a new exposure, no history of HBV.', markers: ['Positive', 'Positive', 'Negative', 'Positive'], choices: interpretations, correct: 2, why: 'IgM core antibody and the history favor acute infection. IgM can also be positive during a severe flare or reactivation of chronic HBV, so use prior results and the clinical history.', source: hbv },
+  { prompt: 'Surface antigen was also positive eight months ago.', markers: ['Positive', 'Positive', 'Negative', 'Negative'], choices: interpretations, correct: 3, why: 'Surface antigen persisting at least six months supports chronic infection. The standard triple panel alone does not reliably date infection.', source: hbv },
+  { prompt: 'First available blood tests; symptom history is unclear.', markers: ['Positive', 'Positive', 'Negative', 'Not tested'], choices: interpretations, correct: 4, why: 'The panel indicates current infection in this context but cannot distinguish acute from chronic. Seek prior results and obtain IgM anti-HBc when acute disease is suspected.', source: hbv },
+  { prompt: 'Asymptomatic patient starting an immunosuppressive regimen.', markers: ['Negative', 'Positive', 'Negative', 'Not tested'], choices: interpretations, correct: 5, why: 'Possibilities include remote infection with waned surface antibody, occult infection or a false positive. Context and additional testing matter before immunosuppression.', source: hbv },
+  { prompt: 'No vaccine documentation or known prior infection.', markers: ['Negative', 'Negative', 'Negative', 'Not tested'], choices: interpretations, correct: 6, why: 'With no evidence of past infection or vaccination, this pattern suggests susceptibility. Offer vaccination per current guidance.', source: hbv },
+]
+
+const pediatricDrills: Drill[] = [
   {
-    id: 1,
-    name: 'Acute Hepatitis B',
-    serology: { hbsag: true, antiHBc: true, antiHBs: false },
-    interpretation: 'Acute HBV infection',
-    details: 'HBsAg positive indicates active infection. Anti-HBc (IgM) present in acute phase. Anti-HBs not yet developed.',
+    prompt: 'A well newborn is delivered to a parent with a positive HBsAg result. What should the birth team do?',
+    choices: ['Give HepB vaccine and HBIG within 12 hours', 'Give vaccine alone at the first clinic visit', 'Wait for infant anti-HBs before deciding'],
+    correct: 0,
+    why: 'Use single-antigen HepB vaccine and hepatitis B immune globulin (HBIG), in separate limbs, within 12 hours of birth. Complete the series using the birth-weight-specific schedule and plan postvaccination testing.',
+    source: hbvPerinatal,
   },
   {
-    id: 2,
-    name: 'Chronic Hepatitis B',
-    serology: { hbsag: true, antiHBc: true, antiHBs: false },
-    interpretation: 'Chronic HBV infection',
-    details: 'HBsAg positive for >6 months = chronic infection. Anti-HBc (IgG) indicates past exposure. No protective antibody.',
+    prompt: 'A 3-month-old was born to a parent with detectable HCV RNA during pregnancy. What is the recommended test now?',
+    choices: ['Anti-HCV alone', 'HCV RNA nucleic acid test', 'No testing until age 18 months'],
+    correct: 1,
+    why: 'Use HCV RNA at age 2–6 months. Passively transferred antibody makes early antibody testing unreliable. Detectable RNA warrants pediatric HCV expertise; undetectable RNA at ≥2 months generally needs no more follow-up unless clinically warranted.',
+    source: hcvPerinatal,
   },
   {
-    id: 3,
-    name: 'Resolved Infection',
-    serology: { hbsag: false, antiHBc: true, antiHBs: true },
-    interpretation: 'Resolved HBV infection with immunity',
-    details: 'HBsAg cleared. Anti-HBc indicates past infection. Anti-HBs provides immunity.',
-  },
-  {
-    id: 4,
-    name: 'Vaccinated',
-    serology: { hbsag: false, antiHBc: false, antiHBs: true },
-    interpretation: 'Immune due to HBV vaccination',
-    details: 'Only anti-HBs positive indicates vaccine-induced immunity, not natural infection.',
-  },
-  {
-    id: 5,
-    name: 'Susceptible',
-    serology: { hbsag: false, antiHBc: false, antiHBs: false },
-    interpretation: 'Susceptible to HBV',
-    details: 'All markers negative. No immunity, no current or past infection. Vaccination recommended.',
+    prompt: 'A newborn exposed to HBV completed the vaccine series on time. Which tests check infection and protection at the 9–12-month visit?',
+    choices: ['Total anti-HBc and IgM anti-HBc', 'Anti-HBs only', 'HBsAg and anti-HBs'],
+    correct: 2,
+    why: 'Order HBsAg and anti-HBs, not anti-HBc. If the series was delayed, test 1–2 months after the final dose, but not before 9 months of age.',
+    source: hbvPerinatal,
   },
 ]
 
+function Source({ href, children }: { href: string; children: string }) {
+  return <a className="text-primary underline underline-offset-4" href={href}>{children}</a>
+}
+
+function HepatitisDrill({ drills }: { drills: Drill[] }) {
+  const [scenario, setScenario] = useState(0)
+  const [answer, setAnswer] = useState<number | null>(null)
+  const active = drills[scenario]
+
+  return <div className="space-y-4">
+    <div className="flex flex-wrap gap-2" role="group" aria-label="Select a case">
+      {drills.map((item, index) => <Button key={item.prompt} size="sm" variant={scenario === index ? 'default' : 'outline'} aria-pressed={scenario === index} onClick={() => { setScenario(index); setAnswer(null) }}>Case {index + 1}</Button>)}
+    </div>
+    <p className="font-medium">{active.prompt}</p>
+    {active.markers && <dl className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
+      {active.markers.map((value, index) => <div key={names[index]} className="rounded-md border p-3"><dt className="text-muted-foreground">{names[index]}</dt><dd className="font-semibold">{value}</dd></div>)}
+    </dl>}
+    <div className="grid sm:grid-cols-2 gap-2" role="group" aria-label="Select an answer">
+      {active.choices.map((choice, index) => <Button key={choice} variant={answer === index ? 'default' : 'outline'} className="h-auto min-h-10 whitespace-normal justify-start text-left" aria-pressed={answer === index} onClick={() => setAnswer(index)}>{choice}</Button>)}
+    </div>
+    {answer !== null && <div role="status" className="space-y-1 rounded-md border p-3 text-sm">
+      <p className="font-semibold">{answer === active.correct ? 'Correct' : 'Best answer'}: {active.choices[active.correct]}</p>
+      <p>{active.why}</p>
+      <Source href={active.source}>CDC guidance behind the answer</Source>
+    </div>}
+  </div>
+}
+
 export function HepatitisPage() {
-  const [selectedScenario, setSelectedScenario] = useState(0)
-  const [showInterpretation, setShowInterpretation] = useState(false)
-  const scenario = hbvScenarios[selectedScenario]
-
-  const SerologyMarker = ({ label, positive }: { label: string; positive: boolean }) => (
-    <div className="flex items-center justify-between p-3 border rounded-lg">
-      <span className="font-medium">{label}</span>
-      <div className="flex items-center space-x-2">
-        {positive ? (
-          <>
-            <CheckCircle className="h-5 w-5 text-green-500" />
-            <span className="text-sm font-medium text-green-500">Positive</span>
-          </>
-        ) : (
-          <>
-            <XCircle className="h-5 w-5 text-muted-foreground" />
-            <span className="text-sm font-medium text-muted-foreground">Negative</span>
-          </>
-        )}
-      </div>
+  const [params, setParams] = useSearchParams()
+  const population = params.get('audience') === 'pediatric' ? 'perinatal' : 'general'
+  function setPopulation(value: 'general' | 'perinatal') {
+    setParams(previous => { const next = new URLSearchParams(previous); next.set('audience', value === 'perinatal' ? 'pediatric' : 'adult'); return next })
+  }
+  return <div className="space-y-6 max-w-4xl mx-auto">
+    <header>
+      <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Viral Hepatitis</h1>
+      <p className="text-muted-foreground mt-2">Interpret HBV serologies, confirm current HCV infection, and recognize when perinatal exposure changes testing.</p>
+    </header>
+    <div className="flex flex-wrap gap-2" role="group" aria-label="Population">
+      <Button variant={population === 'general' ? 'default' : 'outline'} aria-pressed={population === 'general'} onClick={() => setPopulation('general')}>Adult / general</Button>
+      <Button variant={population === 'perinatal' ? 'default' : 'outline'} aria-pressed={population === 'perinatal'} onClick={() => setPopulation('perinatal')}>Pediatric / perinatal</Button>
     </div>
-  )
-
-  return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      <div>
-        <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
-          Hepatitis B & C
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          Serology interpretation and treatment frameworks
-        </p>
-      </div>
-
+    {population === 'general' ? <>
       <Card>
-        <CardHeader>
-          <CardTitle>Hepatitis B Serology Interpreter</CardTitle>
-          <CardDescription>
-            Learn to interpret common HBV serology patterns
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex gap-2 flex-wrap">
-            {hbvScenarios.map((s, idx) => (
-              <Button
-                key={s.id}
-                variant={selectedScenario === idx ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => {
-                  setSelectedScenario(idx)
-                  setShowInterpretation(false)
-                }}
-              >
-                {s.name}
-              </Button>
-            ))}
-          </div>
-
-          <div className="space-y-4">
-            <div className="space-y-3">
-              <SerologyMarker label="HBsAg (Hepatitis B surface antigen)" positive={scenario.serology.hbsag} />
-              <SerologyMarker label="Anti-HBc (Antibody to core antigen)" positive={scenario.serology.antiHBc} />
-              <SerologyMarker label="Anti-HBs (Antibody to surface antigen)" positive={scenario.serology.antiHBs} />
-            </div>
-
-            <Button
-              onClick={() => setShowInterpretation(!showInterpretation)}
-              className="w-full md:w-auto"
-            >
-              {showInterpretation ? 'Hide' : 'Show'} Interpretation
-            </Button>
-
-            {showInterpretation && (
-              <div className="p-4 border rounded-lg bg-muted/50 space-y-2">
-                <p className="font-semibold text-lg">{scenario.interpretation}</p>
-                <p className="text-sm text-muted-foreground">{scenario.details}</p>
-              </div>
-            )}
-          </div>
+        <CardHeader><CardTitle>HBV serology challenge</CardTitle><CardDescription>Read the panel, then choose an interpretation. Identical triple panels can need different conclusions once you know the timing or IgM result.</CardDescription></CardHeader>
+        <CardContent><HepatitisDrill key="adult" drills={hbvDrills} /></CardContent>
+      </Card>
+      <Card>
+        <CardHeader><CardTitle>What each marker can tell you</CardTitle></CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <p><strong>HBsAg:</strong> usually current infection; transient positivity can follow recent vaccination.</p>
+          <p><strong>Total anti-HBc:</strong> past or current infection, not vaccine response. <strong>IgM anti-HBc:</strong> supports recent infection but may appear in a flare.</p>
+          <p><strong>Anti-HBs:</strong> surface antibody from vaccination or recovery; interpret with the other markers and vaccine history.</p>
+          <p><strong>After a chronic HBV result:</strong> link to care for disease staging, treatment eligibility, monitoring and liver cancer surveillance when indicated. Antivirals can suppress HBV but are not considered curative. <Source href="https://www.cdc.gov/hepatitis-b/hcp/clinical-care/index.html">CDC chronic HBV care</Source></p>
+          <p>CDC adult screening uses the triple panel: HBsAg, total anti-HBc and anti-HBs. For pregnancy, screen for HBsAg during each pregnancy; the prenatal result affects newborn management. <Source href={hbv}>CDC HBV testing and interpretation</Source></p>
         </CardContent>
       </Card>
-
+    </> : <>
       <Card>
-        <CardHeader>
-          <CardTitle>HBV Serology Markers Explained</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <div className="p-3 border rounded-lg">
-              <p className="font-medium">HBsAg (Surface Antigen)</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Indicates active HBV infection (acute or chronic). First serologic marker to appear.
-                Chronic if present {'>'} 6 months.
-              </p>
-            </div>
-            <div className="p-3 border rounded-lg">
-              <p className="font-medium">Anti-HBc (Core Antibody)</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                IgM anti-HBc: acute infection. IgG anti-HBc: past or chronic infection.
-                Appears during acute infection and persists for life.
-              </p>
-            </div>
-            <div className="p-3 border rounded-lg">
-              <p className="font-medium">Anti-HBs (Surface Antibody)</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Indicates recovery and immunity. Also present after successful vaccination.
-                Provides protection against HBV.
-              </p>
-            </div>
-            <div className="p-3 border rounded-lg">
-              <p className="font-medium">HBeAg (e Antigen)</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Indicates high viral replication and infectivity. Not routinely tested in all scenarios.
-              </p>
-            </div>
-            <div className="p-3 border rounded-lg">
-              <p className="font-medium">HBV DNA</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Direct measurement of viral load. Used to monitor treatment response and disease activity.
-              </p>
-            </div>
-          </div>
+        <CardHeader><CardTitle>Perinatal exposure challenge</CardTitle><CardDescription>Work through birth protection, early HCV testing and HBV follow-up.</CardDescription></CardHeader>
+        <CardContent><HepatitisDrill key="pediatric" drills={pediatricDrills} /></CardContent>
+      </Card>
+      <Card>
+        <CardHeader><CardTitle>When an infant misses the testing window</CardTitle></CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <p><strong>Perinatal HCV, not previously tested:</strong> use HCV RNA at 7–17 months; from 18 months use anti-HCV with reflex RNA if reactive. <Source href={hcvPerinatal}>CDC perinatal algorithm</Source></p>
+          <p><strong>Confirmed HCV:</strong> pediatric expertise helps confirm persistence before treatment. Direct-acting antiviral therapy is recommended for children with HCV from age 3 years, when an approved regimen is available. <Source href={hcvChildren}>AASLD–IDSA pediatric guidance</Source></p>
         </CardContent>
       </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Hepatitis C Overview</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <h3 className="font-semibold mb-2">Screening & Diagnosis</h3>
-            <div className="space-y-2">
-              <div className="p-3 border rounded-lg">
-                <p className="font-medium text-sm">Anti-HCV Antibody</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Initial screening test. Positive indicates exposure but doesn't differentiate active
-                  from cleared infection.
-                </p>
-              </div>
-              <div className="p-3 border rounded-lg">
-                <p className="font-medium text-sm">HCV RNA (Viral Load)</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Confirmatory test for active infection. Detectable RNA = active HCV.
-                  Undetectable RNA with positive antibody = cleared infection.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <h3 className="font-semibold mb-2">Natural History</h3>
-            <ul className="space-y-1 text-sm text-muted-foreground list-disc list-inside">
-              <li>~75-85% develop chronic infection after acute HCV</li>
-              <li>15-25% spontaneously clear virus (antibody positive, RNA negative)</li>
-              <li>Chronic HCV can lead to cirrhosis (20-30% over 20-30 years)</li>
-              <li>Cirrhosis increases risk of hepatocellular carcinoma</li>
-            </ul>
-          </div>
-
-          <div>
-            <h3 className="font-semibold mb-2">Treatment Framework</h3>
-            <p className="text-sm text-muted-foreground mb-2">
-              Modern direct-acting antivirals (DAAs) have revolutionized HCV treatment with
-              cure rates {'>'} 95%.
-            </p>
-            <div className="space-y-2">
-              <div className="p-3 border rounded-lg bg-muted/50">
-                <p className="font-medium text-sm">Treatment Goals</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Sustained virologic response (SVR) = undetectable HCV RNA 12 weeks after
-                  treatment completion = cure
-                </p>
-              </div>
-              <div className="p-3 border rounded-lg bg-muted/50">
-                <p className="font-medium text-sm">Genotype Testing</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  HCV genotype (1-6) helps guide treatment selection, though pan-genotypic
-                  regimens now available
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <h3 className="font-semibold mb-2">Monitoring in Chronic Hepatitis</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              {[
-                'Liver function tests (ALT, AST, bilirubin)',
-                'Hepatitis B and C viral loads',
-                'Fibrosis assessment (FibroScan, biopsy)',
-                'HCC screening (ultrasound, AFP in cirrhosis)',
-                'Vaccination status (HAV, HBV if not immune)',
-                'Treatment adherence and side effects',
-              ].map((param) => (
-                <div key={param} className="flex items-start space-x-2 text-sm">
-                  <div className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0" />
-                  <span className="text-muted-foreground">{param}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Key Differences: HBV vs HCV</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left p-2">Feature</th>
-                  <th className="text-left p-2">Hepatitis B</th>
-                  <th className="text-left p-2">Hepatitis C</th>
-                </tr>
-              </thead>
-              <tbody className="text-muted-foreground">
-                <tr className="border-b">
-                  <td className="p-2 font-medium text-foreground">Transmission</td>
-                  <td className="p-2">Blood, sexual, perinatal</td>
-                  <td className="p-2">Primarily blood-borne</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="p-2 font-medium text-foreground">Chronicity rate</td>
-                  <td className="p-2">~5% (adults), 90% (neonates)</td>
-                  <td className="p-2">~75-85%</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="p-2 font-medium text-foreground">Vaccine available</td>
-                  <td className="p-2">Yes</td>
-                  <td className="p-2">No</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="p-2 font-medium text-foreground">Treatment goal</td>
-                  <td className="p-2">Viral suppression (control)</td>
-                  <td className="p-2">Cure (SVR)</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
+    </>}
+    <Card>
+      <CardHeader><CardTitle>HCV: antibody shows exposure, RNA shows current infection</CardTitle></CardHeader>
+      <CardContent className="space-y-2 text-sm">
+        <p><strong>Adult / general testing:</strong> order anti-HCV with reflex RNA when reactive. A reactive antibody with no detectable RNA usually means no current infection; consider recent exposure, specimen issues or clinical suspicion before closing the case. Use RNA when recent exposure is suspected even if antibody is negative. <Source href={hcv}>CDC HCV diagnostic sequence</Source></p>
+        <p><strong>Adult treatment:</strong> eligible treatment-naive adults without cirrhosis may qualify for simplified pangenotypic therapy. Check fibrosis stage, HBV status, pregnancy and drug interactions first. Undetectable HCV RNA at least 12 weeks after finishing therapy confirms cure; reinfection remains possible. <Source href={hcvAdults}>AASLD–IDSA simplified adult pathway</Source></p>
+      </CardContent>
+    </Card>
+  </div>
 }

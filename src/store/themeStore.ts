@@ -1,47 +1,34 @@
 import { create } from 'zustand'
 
+type Theme = 'light' | 'dark'
 interface ThemeStore {
-  theme: 'light' | 'dark'
+  theme: Theme
   toggleTheme: () => void
-  setTheme: (theme: 'light' | 'dark') => void
+  setTheme: (theme: Theme) => void
 }
 
-// Initialize theme from localStorage or default to dark
-const getInitialTheme = (): 'light' | 'dark' => {
-  if (typeof window !== 'undefined') {
-    const stored = localStorage.getItem('id-master-theme')
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored)
-        return parsed.theme || 'dark'
-      } catch {
-        return 'dark'
-      }
-    }
+const key = 'id-master-theme'
+
+function getInitialTheme(): Theme {
+  try {
+    const value = JSON.parse(window.localStorage.getItem(key) ?? 'null')
+    return value?.theme === 'light' ? 'light' : 'dark'
+  } catch {
+    return 'dark'
   }
-  return 'dark'
+}
+
+function save(theme: Theme) {
+  try {
+    window.localStorage.setItem(key, JSON.stringify({ theme }))
+  } catch {
+    // A private or restricted browser can still change theme for this visit.
+  }
+  return { theme }
 }
 
 export const useThemeStore = create<ThemeStore>((set) => ({
   theme: getInitialTheme(),
-  toggleTheme: () =>
-    set((state) => {
-      const newTheme = state.theme === 'light' ? 'dark' : 'light'
-      document.documentElement.classList.remove('light', 'dark')
-      document.documentElement.classList.add(newTheme)
-      // Persist to localStorage
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('id-master-theme', JSON.stringify({ theme: newTheme }))
-      }
-      return { theme: newTheme }
-    }),
-  setTheme: (theme) => {
-    document.documentElement.classList.remove('light', 'dark')
-    document.documentElement.classList.add(theme)
-    // Persist to localStorage
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('id-master-theme', JSON.stringify({ theme }))
-    }
-    set({ theme })
-  },
+  toggleTheme: () => set((state) => save(state.theme === 'light' ? 'dark' : 'light')),
+  setTheme: (theme) => set(save(theme)),
 }))

@@ -1,399 +1,120 @@
 import { useState } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card'
+import { useSearchParams } from 'react-router-dom'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { AlertTriangle } from 'lucide-react'
 
-interface CaseScenario {
-  id: number
-  presentation: string
-  findings: string[]
-  diagnosis: string
-  reasoning: string
-  urgency: 'routine' | 'urgent' | 'emergency'
+const ssti = 'https://www.idsociety.org/practice-guideline/skin-and-soft-tissue-infections/'
+const trial = 'https://pubmed.ncbi.nlm.nih.gov/28657870/'
+const chop = 'https://www.chop.edu/clinical-pathway/cellulitis-abscess-clinical-pathway'
+const impetigo = 'https://www.cdc.gov/group-a-strep/hcp/clinical-guidance/impetigo.html'
+const nec = 'https://www.cdc.gov/group-a-strep/hcp/clinical-guidance/necrotizing-fasciitis.html'
+const foot = 'https://www.idsociety.org/practice-guideline/diabetic-foot-infections/'
+
+const scenarios = [
+  {
+    label: 'Nonpurulent · Shared',
+    stem: 'A well-appearing patient has expanding, warm, tender shin redness. There is no wound drainage, fluctuance, rapid progression, or disproportionate pain. Which initial management fits best?',
+    choices: [
+      ['Incise the red area', 'No collection is suggested on this exam. Incision is for a drainable focus, not diffuse cellulitis.'],
+      ['Treat typical nonpurulent cellulitis with streptococcal coverage', 'Correct. Routine MRSA coverage is not needed for typical mild nonpurulent cellulitis without specific risks. Reassess if the course is atypical.'],
+      ['Treat for MRSA only', 'A typical nonpurulent presentation calls for reliable streptococcal coverage.'],
+    ],
+    source: ssti,
+  },
+  {
+    label: 'Purulent · Pediatric',
+    stem: 'A well-appearing school-age child has a tender, fluctuant lesion on the trunk. Ultrasound shows a defined superficial collection. Which next step addresses the source?',
+    choices: [
+      ['Use topical antibiotic alone', 'Topical therapy does not drain a defined collection.'],
+      ['Wait for blood culture results', 'A localized collection needs assessment for drainage; blood culture results do not provide source control.'],
+      ['Arrange drainage with age-appropriate pain control', 'Correct. If obtaining pus, send it for culture when feasible. Consider adjunct systemic therapy based on severity, host factors, local susceptibility, and the benefit shown in trials.'],
+    ],
+    source: chop,
+  },
+  {
+    label: 'Necrotizing · Shared',
+    stem: 'Following a minor wound, redness expands over hours. Pain is much greater than the visible changes and the patient becomes hypotensive. There is no visible gas or bullae. What takes priority?',
+    choices: [
+      ['Urgent surgical evaluation while resuscitating and starting broad empiric IV therapy', 'Correct. The early skin findings can be deceptively mild. Do not delay surgical exploration for a lab score or imaging when suspicion is high.'],
+      ['Wait for CT confirmation first', 'Imaging may help in uncertain cases, but waiting is unsafe with this degree of suspicion and instability.'],
+      ['Reassure because there is no crepitus', 'Gas, bullae and skin necrosis can be absent early. Their absence does not rule out a necrotizing infection.'],
+    ],
+    source: nec,
+  },
+  {
+    label: 'Diabetes-related foot · Adult',
+    stem: 'An adult with neuropathy has a chronic plantar ulcer, surrounding inflammation and bone reachable by sterile probe. What is the better diagnostic pathway?',
+    choices: [
+      ['Treat as uncomplicated cellulitis and stop the workup there', 'A deep ulcer with a positive probe-to-bone test raises concern for bone involvement; also assess for ischemia and deep infection.'],
+      ['Assess depth and perfusion, get plain films and inflammatory markers, and use MRI if still uncertain', 'Correct. The initial tests are interpreted together. A superficial swab does not establish the pathogen in bone.'],
+      ['Assume a positive superficial swab proves osteomyelitis', 'Superficial growth may reflect colonization; in suspected bone infection, bone culture is preferred when obtaining a specimen.'],
+    ],
+    source: foot,
+  },
+] as const
+
+function Source({ href, children }: { href: string; children: string }) {
+  return <a href={href} className="text-primary underline underline-offset-2">{children}</a>
 }
 
-const skinCases: CaseScenario[] = [
-  {
-    id: 1,
-    presentation: 'Diffuse erythema and warmth on lower leg',
-    findings: [
-      'No purulent drainage',
-      'No fluctuance',
-      'Well-demarcated borders',
-      'Tender to palpation',
-    ],
-    diagnosis: 'Cellulitis',
-    reasoning:
-      'Diffuse erythema without purulence or fluctuance suggests non-purulent cellulitis, typically streptococcal.',
-    urgency: 'routine',
-  },
-  {
-    id: 2,
-    presentation: 'Localized swelling with purulent drainage',
-    findings: [
-      'Fluctuant mass',
-      'Purulent material expressed',
-      'Surrounding erythema',
-      'Warm and tender',
-    ],
-    diagnosis: 'Abscess',
-    reasoning:
-      'Fluctuance and purulent drainage indicate abscess formation requiring incision and drainage.',
-    urgency: 'urgent',
-  },
-  {
-    id: 3,
-    presentation: 'Rapidly spreading erythema with severe pain',
-    findings: [
-      'Pain out of proportion to findings',
-      'Hemorrhagic bullae',
-      'Skin necrosis',
-      'Crepitus on palpation',
-      'Systemic toxicity',
-    ],
-    diagnosis: 'Necrotizing Fasciitis',
-    reasoning:
-      'Pain out of proportion, bullae, necrosis, and crepitus are red flags for necrotizing soft tissue infection requiring emergency surgery.',
-    urgency: 'emergency',
-  },
-  {
-    id: 4,
-    presentation: 'Erythema with central purulent lesion',
-    findings: [
-      'Multiple furuncles coalescing',
-      'Purulent drainage from multiple points',
-      'Surrounding cellulitis',
-      'Previous similar lesions',
-    ],
-    diagnosis: 'Carbuncle',
-    reasoning:
-      'Multiple coalescing furuncles form a carbuncle, typically caused by S. aureus.',
-    urgency: 'urgent',
-  },
-]
-
 export function SkinInfectionsPage() {
-  const [selectedCase, setSelectedCase] = useState(0)
-  const [showDiagnosis, setShowDiagnosis] = useState(false)
-  const currentCase = skinCases[selectedCase]
+  const [params] = useSearchParams()
+  const audience = params.get('audience')
+  return <SkinInfectionsLesson key={audience} initialCase={audience === 'pediatric' ? 1 : audience === 'adult' ? 3 : 0} />
+}
 
-  const getUrgencyColor = (urgency: string) => {
-    switch (urgency) {
-      case 'emergency':
-        return 'bg-red-500'
-      case 'urgent':
-        return 'bg-orange-500'
-      default:
-        return 'bg-green-500'
-    }
-  }
-
-  const getUrgencyLabel = (urgency: string) => {
-    switch (urgency) {
-      case 'emergency':
-        return 'Emergency'
-      case 'urgent':
-        return 'Urgent'
-      default:
-        return 'Routine'
-    }
-  }
+function SkinInfectionsLesson({ initialCase }: { initialCase: number }) {
+  const [active, setActive] = useState(initialCase)
+  const [selected, setSelected] = useState<number | null>(null)
+  const current = scenarios[active]
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      <div>
-        <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
-          Skin & Soft Tissue Infections
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          Cellulitis, abscess, and necrotizing fasciitis
-        </p>
+    <div className="mx-auto max-w-4xl space-y-6">
+      <header>
+        <h1 className="text-3xl font-bold tracking-tight md:text-4xl">Skin &amp; soft tissue infections</h1>
+        <p className="mt-2 text-muted-foreground">Three first questions: Is there pus? Is there a deep or rapidly progressing process? What makes this patient different?</p>
+      </header>
+      <Card>
+        <CardHeader><CardTitle>Match the pattern to the next move · All ages</CardTitle></CardHeader>
+        <CardContent className="space-y-4 text-sm">
+          <p><strong>Nonpurulent spreading warmth and erythema:</strong> typical mild cellulitis calls for streptococcal coverage. Penetrating trauma, known MRSA, purulence or systemic toxicity changes the assessment. Reconsider the diagnosis if atypical; contact dermatitis and venous stasis can mimic infection. <Source href={ssti}>IDSA SSTI guideline (2014)</Source></p>
+          <p><strong>Focal fluctuance or drainage:</strong> look for a drainable collection. Bedside ultrasound can help when exam is equivocal. Drainage is the core intervention for a drainable abscess; adjunct antibiotics can improve cure after drainage in selected uncomplicated abscesses and are especially important to consider with systemic illness, impaired defenses or surrounding disease. <Source href={trial}>Randomized adult/pediatric abscess trial (2017)</Source> · <Source href={chop}>CHOP pediatric pathway</Source></p>
+          <p><strong>Rapid progression, disproportionate pain or shock:</strong> suspect necrotizing infection. Get urgent surgical evaluation, resuscitate and start broad empiric IV treatment. Do not wait for a score, imaging, crepitus or skin necrosis before escalation. <Source href={nec}>CDC clinical guidance on GAS necrotizing fasciitis</Source></p>
+        </CardContent>
+      </Card>
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader><CardTitle>Pediatric · Impetigo and practical drainage</CardTitle></CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <p>Honey-colored crusts suggest nonbullous impetigo. Few lesions can be treated topically; numerous lesions usually warrant oral therapy that covers both group A streptococci and <em>S. aureus</em>. Consider an alternative diagnosis if the morphology or response does not fit.</p>
+            <p>For a child with an abscess, plan analgesia and, when needed, procedural support. A sick child or special site such as around the eye is not an uncomplicated cellulitis/abscess pathway case.</p>
+            <p><Source href={impetigo}>CDC impetigo guidance</Source> · <Source href={chop}>CHOP pediatric cellulitis and abscess pathway</Source></p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle>Adult · Diabetes-related foot infection</CardTitle></CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <p>Assess depth, perfusion, systemic illness and need for source control. Neuropathy may blunt pain. A clinically uninfected ulcer does not require antibiotics to promote healing.</p>
+            <p>For suspected osteomyelitis, combine probe-to-bone, plain films and inflammatory markers initially; use MRI if the diagnosis remains uncertain. Deep abscess, gangrene or severe ischemia calls for urgent specialist input.</p>
+            <p><Source href={foot}>IWGDF/IDSA foot infection guideline (2023)</Source></p>
+          </CardContent>
+        </Card>
       </div>
-
       <Card>
-        <CardHeader>
-          <CardTitle>Interactive Case Sorter</CardTitle>
-          <CardDescription>
-            Practice differentiating skin and soft tissue infections
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex gap-2 flex-wrap">
-            {skinCases.map((c, idx) => (
-              <Button
-                key={c.id}
-                variant={selectedCase === idx ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => {
-                  setSelectedCase(idx)
-                  setShowDiagnosis(false)
-                }}
-              >
-                Case {c.id}
-              </Button>
-            ))}
+        <CardHeader><CardTitle>Practice triage: choose the next move</CardTitle></CardHeader>
+        <CardContent className="space-y-4 text-sm">
+          <div className="flex flex-wrap gap-2">
+            {scenarios.map((item, index) => <Button key={item.label} variant={active === index ? 'default' : 'outline'} aria-pressed={active === index} onClick={() => { setActive(index); setSelected(null) }}>{item.label}</Button>)}
           </div>
-
-          <div className="space-y-4">
-            <div className="p-4 border-2 rounded-lg">
-              <p className="font-semibold mb-3">Presentation:</p>
-              <p className="text-muted-foreground">{currentCase.presentation}</p>
-            </div>
-
-            <div>
-              <p className="font-semibold mb-2">Clinical Findings:</p>
-              <div className="space-y-2">
-                {currentCase.findings.map((finding) => (
-                  <div key={finding} className="flex items-start space-x-2 p-2 border rounded">
-                    <div className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0" />
-                    <span className="text-sm text-muted-foreground">{finding}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <div className={`h-3 w-3 rounded-full ${getUrgencyColor(currentCase.urgency)}`} />
-              <span className="font-medium">{getUrgencyLabel(currentCase.urgency)}</span>
-            </div>
-
-            <Button
-              onClick={() => setShowDiagnosis(!showDiagnosis)}
-              className="w-full md:w-auto"
-            >
-              {showDiagnosis ? 'Hide' : 'Show'} Diagnosis & Reasoning
-            </Button>
-
-            {showDiagnosis && (
-              <div className="p-4 border rounded-lg bg-muted/50 space-y-2">
-                <p className="font-semibold text-lg">{currentCase.diagnosis}</p>
-                <p className="text-sm text-muted-foreground">{currentCase.reasoning}</p>
-              </div>
-            )}
+          <p className="font-medium">{current.stem}</p>
+          <div className="grid gap-2">
+            {current.choices.map(([choice], index) => <Button key={choice} variant="outline" className="h-auto min-h-10 justify-start whitespace-normal py-2 text-left" aria-pressed={selected === index} onClick={() => setSelected(index)}>{choice}</Button>)}
           </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Cellulitis</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <h3 className="font-semibold mb-2">Classification</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="p-3 border rounded-lg">
-                <p className="font-medium text-sm">Non-purulent Cellulitis</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  <span className="font-medium">Organism:</span> β-hemolytic Streptococci (most common)
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  <span className="font-medium">Features:</span> Diffuse erythema, warmth, no drainage
-                </p>
-              </div>
-              <div className="p-3 border rounded-lg">
-                <p className="font-medium text-sm">Purulent Cellulitis</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  <span className="font-medium">Organism:</span> S. aureus (including MRSA)
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  <span className="font-medium">Features:</span> Associated abscess or purulent drainage
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <h3 className="font-semibold mb-2">Risk Factors</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              {[
-                'Skin barrier disruption (wounds, ulcers)',
-                'Lymphedema or venous insufficiency',
-                'Tinea pedis (toe web infections)',
-                'Obesity',
-                'Diabetes mellitus',
-                'Immunosuppression',
-              ].map((factor) => (
-                <div key={factor} className="flex items-start space-x-2 text-sm">
-                  <div className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0" />
-                  <span className="text-muted-foreground">{factor}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Abscess</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="p-4 border-2 rounded-lg bg-blue-500/10 border-blue-500/20">
-            <p className="font-semibold">Key Management Principle</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Incision and drainage is the primary treatment. Antibiotics alone are insufficient.
-            </p>
-          </div>
-
-          <div>
-            <h3 className="font-semibold mb-2">Typical Organisms</h3>
-            <ul className="space-y-1 text-sm text-muted-foreground list-disc list-inside">
-              <li>S. aureus (most common, including MRSA)</li>
-              <li>Polymicrobial in certain locations (perirectal, axillary)</li>
-              <li>Consider anaerobes if foul-smelling discharge</li>
-            </ul>
-          </div>
-
-          <div>
-            <h3 className="font-semibold mb-2">When to Add Antibiotics</h3>
-            <ul className="space-y-1 text-sm text-muted-foreground list-disc list-inside">
-              <li>Extensive surrounding cellulitis</li>
-              <li>Systemic signs of infection (fever, tachycardia)</li>
-              <li>Immunocompromised patient</li>
-              <li>Lack of response to I&D alone</li>
-              <li>Abscess in difficult-to-drain location</li>
-            </ul>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <AlertTriangle className="h-6 w-6 text-red-500" />
-            <span>Necrotizing Fasciitis - Surgical Emergency</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="p-4 border-2 rounded-lg bg-red-500/10 border-red-500/20">
-            <p className="font-semibold text-red-500">Critical Red Flags</p>
-            <p className="text-sm text-muted-foreground mt-2">
-              High clinical suspicion requires immediate surgical consultation. Do not wait for
-              imaging or laboratory confirmation.
-            </p>
-          </div>
-
-          <div>
-            <h3 className="font-semibold mb-2">Clinical Red Flags</h3>
-            <div className="space-y-2">
-              {[
-                {
-                  flag: 'Pain out of proportion to physical findings',
-                  significance: 'Most sensitive early sign',
-                },
-                {
-                  flag: 'Hemorrhagic bullae',
-                  significance: 'Indicates deep tissue involvement',
-                },
-                {
-                  flag: 'Skin necrosis or ecchymosis',
-                  significance: 'Suggests vascular thrombosis',
-                },
-                {
-                  flag: 'Crepitus',
-                  significance: 'Gas production by organisms',
-                },
-                {
-                  flag: 'Systemic toxicity disproportionate to skin findings',
-                  significance: 'Sepsis from deep infection',
-                },
-                {
-                  flag: 'Rapid progression',
-                  significance: 'Spreads along fascial planes',
-                },
-              ].map((item) => (
-                <div key={item.flag} className="p-3 border rounded-lg">
-                  <p className="font-medium text-sm">{item.flag}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{item.significance}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <h3 className="font-semibold mb-2">Types</h3>
-            <div className="space-y-2">
-              <div className="p-3 border rounded-lg">
-                <p className="font-medium text-sm">Type I (Polymicrobial)</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Mixed aerobes and anaerobes. Often in diabetics, postoperative, or
-                  immunocompromised.
-                </p>
-              </div>
-              <div className="p-3 border rounded-lg">
-                <p className="font-medium text-sm">Type II (Monomicrobial)</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Group A Streptococcus (most common). Can occur in healthy individuals. Often
-                  associated with toxic shock syndrome.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <h3 className="font-semibold mb-2">LRINEC Score (Laboratory Risk Indicator)</h3>
-            <p className="text-sm text-muted-foreground mb-2">
-              Helps assess risk but should not delay surgical consultation if clinical suspicion is
-              high. Score ≥6 suggests necrotizing fasciitis.
-            </p>
-            <div className="text-xs text-muted-foreground space-y-1">
-              <p>Parameters: CRP, WBC, Hemoglobin, Sodium, Creatinine, Glucose</p>
-              <p className="italic">Note: Clinical judgment supersedes scoring systems</p>
-            </div>
-          </div>
-
-          <div>
-            <h3 className="font-semibold mb-2">Management</h3>
-            <ol className="space-y-2 text-sm list-decimal list-inside">
-              <li className="text-muted-foreground">
-                <span className="font-medium text-foreground">Immediate surgical consultation</span> -
-                Urgent surgical debridement is life-saving
-              </li>
-              <li className="text-muted-foreground">
-                <span className="font-medium text-foreground">Broad-spectrum antibiotics</span> -
-                Cover Strep, Staph, Gram-negatives, anaerobes
-              </li>
-              <li className="text-muted-foreground">
-                <span className="font-medium text-foreground">Aggressive resuscitation</span> -
-                Often need ICU-level care
-              </li>
-              <li className="text-muted-foreground">
-                <span className="font-medium text-foreground">Serial debridement</span> - Often
-                requires multiple operations
-              </li>
-            </ol>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Special Considerations</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <div className="p-3 border rounded-lg">
-              <p className="font-medium text-sm">Diabetic Foot Infections</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Often polymicrobial. Assess for osteomyelitis (probe-to-bone test, MRI). Consider
-                vascular assessment for arterial insufficiency.
-              </p>
-            </div>
-            <div className="p-3 border rounded-lg">
-              <p className="font-medium text-sm">MRSA Considerations</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Community-acquired MRSA common in purulent infections and abscesses. Risk factors:
-                IVDU, contact sports, crowded living conditions, recurrent infections.
-              </p>
-            </div>
-            <div className="p-3 border rounded-lg">
-              <p className="font-medium text-sm">Immunocompromised Patients</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Lower threshold for imaging and broad-spectrum coverage. Consider atypical organisms
-                (fungi, mycobacteria).
-              </p>
-            </div>
+          <div aria-live="polite">
+            {selected !== null && <div className="space-y-2 rounded-lg border bg-muted p-3">
+              <p>{current.choices[selected][1]}</p>
+              <p><Source href={current.source}>Read the supporting guidance</Source></p>
+            </div>}
           </div>
         </CardContent>
       </Card>

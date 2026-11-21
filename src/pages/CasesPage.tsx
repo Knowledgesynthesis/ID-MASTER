@@ -1,416 +1,311 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { ChevronRight } from 'lucide-react'
-
-interface CaseStep {
-  question: string
-  options: string[]
-  correctAnswer: number
-  explanation: string
-}
+import { DecisionCard, type Audience, type Decision } from './AssessmentPage'
 
 interface ClinicalCase {
-  id: number
+  id: string
   title: string
-  category: string
-  difficulty: 'Beginner' | 'Intermediate' | 'Advanced'
-  initialPresentation: string
-  steps: CaseStep[]
+  audience: Exclude<Audience, 'Shared'>
+  topic: string
+  initial: string
+  takeHome: string
+  steps: readonly Decision[]
 }
 
-const clinicalCases: ClinicalCase[] = [
+const adultSepsis = ['Surviving Sepsis Campaign: Adults (2026)', 'https://www.sccm.org/clinical-resources/guidelines/guidelines/surviving-sepsis-campaign-international-guidelines-for-management-of-sepsis-and-septic-shock-2026'] as const
+const pediatricSepsis = ['Surviving Sepsis Campaign: Children (2026)', 'https://www.sccm.org/clinical-resources/guidelines/guidelines/surviving-sepsis-campaign-international-guidelines-for-the-management-of-sepsis-and-septic-shock-in'] as const
+const cryptococcus = ['NIH: Adult/adolescent cryptococcosis', 'https://clinicalinfo.hiv.gov/en/guidelines/hiv-clinical-guidelines-adult-and-adolescent-opportunistic-infections/cryptococcosis'] as const
+const toxoplasma = ['NIH: Adult/adolescent toxoplasma encephalitis', 'https://clinicalinfo.hiv.gov/en/guidelines/hiv-clinical-guidelines-adult-and-adolescent-opportunistic-infections/toxoplasmosis'] as const
+const ssti = ['IDSA: Skin and soft-tissue infections', 'https://www.idsociety.org/practice-guideline/skin-and-soft-tissue-infections/'] as const
+const uti = ['AAP 2026 pediatric UTI guideline', 'https://publications.aap.org/pediatrics/article/158/4/e2026078565/209460/Clinical-Practice-Guideline-for-the-Diagnosis-and'] as const
+const utiDiagnosis = ['AAP 2026 companion diagnostic report', 'https://publications.aap.org/pediatrics/article/158/4/e2026078566/209462/Urinary-Tract-Infection-Diagnosis-A-Companion-to'] as const
+
+const cases: readonly ClinicalCase[] = [
   {
-    id: 1,
-    title: 'Septic Shock with Unknown Source',
-    category: 'Sepsis',
-    difficulty: 'Intermediate',
-    initialPresentation:
-      'A 65-year-old man presents to the ED with altered mental status, fever (39.5°C), HR 125, BP 82/50, RR 24. His wife reports he has been feeling unwell for 2 days with worsening confusion today.',
+    id: 'peds-shock', title: 'Shock before hypotension', audience: 'Pediatric', topic: 'Sepsis',
+    initial: 'An 8-year-old with fever and suspected bacterial infection is increasingly drowsy. Capillary refill is 5 seconds, pulses are weak, and blood pressure is still within the expected range for age.',
+    takeHome: 'Recognize poor perfusion before hypotension appears. Reassess after every fluid aliquot, not only at a preset total.',
     steps: [
       {
-        question: 'What is the most appropriate initial step?',
+        question: 'Which finding should drive the urgency of the response?',
         options: [
-          'Start empiric antibiotics immediately',
-          'Obtain blood cultures, then start antibiotics within 1 hour',
-          'Order CT scan to identify source',
-          'Wait for culture results before starting antibiotics',
+          ['Poor perfusion and altered mental status despite a preserved blood pressure', 'Children can maintain blood pressure while perfusion is impaired. Activate a pediatric sepsis response for suspected shock.'],
+          ['Only a low blood pressure would trigger a shock response', 'Waiting for hypotension can delay recognition.'],
+          ['Fever alone defines pediatric septic shock', 'The concerning findings are evidence of impaired perfusion and organ dysfunction in the context of suspected infection.'],
         ],
-        correctAnswer: 1,
-        explanation:
-          'In septic shock, obtain cultures quickly but do not delay antibiotics. Goal is cultures first, then antibiotics within 1 hour of recognition.',
+        correct: 0, clue: 'Weak pulses, prolonged refill and a change in mental status.',
+        objective: 'Recognize suspected pediatric shock without first requiring hypotension.', sources: [pediatricSepsis],
       },
       {
-        question: 'Labs return: Lactate 4.2 mmol/L, WBC 18,000, Cr 1.8 (baseline 1.0). What is the next priority?',
+        question: 'In a setting with pediatric intensive care, perfusion and mental status normalize after the initial fluid aliquot. What should happen next?',
         options: [
-          'Start vasopressors immediately',
-          'Initiate fluid resuscitation',
-          'Order dialysis for acute kidney injury',
-          'Obtain infectious disease consultation',
+          ['Continue boluses automatically to reach 60 mL/kg', 'A guideline upper amount is not a target; stop boluses once shock resolves or signs of overload appear.'],
+          ['Reassess and stop further boluses while continuing urgent treatment and monitoring', 'After each aliquot, use the response and signs of overload to guide further fluid. Give antimicrobials for suspected shock as soon as possible, ideally within an hour.'],
+          ['Stop the whole sepsis evaluation because the fluid response excludes infection', 'A response to fluid does not exclude infection or remove the need for monitoring and source evaluation.'],
         ],
-        correctAnswer: 1,
-        explanation:
-          'Elevated lactate and hypotension indicate tissue hypoperfusion. Fluid resuscitation is the initial management before vasopressors.',
-      },
-      {
-        question:
-          'Despite 2L fluid bolus, BP remains 85/55. Lactate 4.0. What is the appropriate next step?',
-        options: [
-          'Continue fluids only',
-          'Initiate vasopressor support',
-          'Discharge to floor with close monitoring',
-          'Hold all interventions until source identified',
-        ],
-        correctAnswer: 1,
-        explanation:
-          'Persistent hypotension despite adequate fluid resuscitation defines septic shock and requires vasopressor support.',
+        correct: 1, clue: 'Shock signs have resolved after the first aliquot.',
+        objective: 'Adapt fluid resuscitation to physiologic response and setting.', sources: [pediatricSepsis],
       },
     ],
   },
   {
-    id: 2,
-    title: 'Opportunistic Infection in HIV',
-    category: 'HIV',
-    difficulty: 'Advanced',
-    initialPresentation:
-      'A 32-year-old man with newly diagnosed HIV (CD4 45 cells/μL) presents with 2 weeks of headache, fever, and confusion. He has not yet started ART.',
+    id: 'adult-shock', title: 'Shock with an unclear source', audience: 'Adult', topic: 'Sepsis',
+    initial: 'A 65-year-old arrives in the ED with fever, new confusion, HR 125, BP 82/50 mm Hg and suspected infection. There is no obvious source on initial examination.',
+    takeHome: 'Resuscitation, empiric antimicrobials and source evaluation proceed together. Do not wait for a fixed fluid total to reassess an unstable patient.',
     steps: [
       {
-        question: 'What are the most concerning diagnoses based on the CD4 count?',
+        question: 'How should blood cultures fit into the first-hour plan?',
         options: [
-          'Pneumocystis pneumonia',
-          'Cryptococcal meningitis or Toxoplasma encephalitis',
-          'Candida esophagitis',
-          'Mycobacterium avium complex',
+          ['Get blood cultures promptly, ideally before antibiotics, without delaying urgent treatment', 'Obtain cultures as soon as possible, in parallel with resuscitation. For suspected shock give antimicrobials immediately, ideally within one hour of recognition.'],
+          ['Wait for cultures to grow before choosing an antibiotic', 'Delayed confirmation is not a reason to withhold urgent empiric therapy in suspected shock.'],
+          ['Complete source imaging before starting any treatment', 'Source evaluation matters, but must not postpone initial treatment of shock.'],
         ],
-        correctAnswer: 1,
-        explanation:
-          'CD4 <100 increases risk for cryptococcal meningitis and toxoplasma encephalitis, both of which present with neurologic symptoms.',
+        correct: 0, clue: 'The source is uncertain, but shock is already suspected.',
+        objective: 'Sequence cultures and antibiotics without delaying resuscitation.', sources: [adultSepsis],
       },
       {
-        question: 'Which initial test is most appropriate?',
+        question: 'Lactate is 4.2 mmol/L and there are signs of hypoperfusion. What is the best approach to initial hemodynamic support?',
         options: [
-          'Chest X-ray',
-          'Head CT followed by lumbar puncture',
-          'Serum cryptococcal antigen alone',
-          'Start empiric treatment without testing',
+          ['Wait for a second lactate before treating the blood pressure', 'Lactate supports risk assessment; the current hypotension and perfusion findings already warrant action.'],
+          ['Start IV crystalloid while reassessing perfusion and the need for early vasopressor support', 'Crystalloid is initial fluid; titrate to response and avoid postponing vasopressors in unstable shock while fluids are continued as appropriate.'],
+          ['Treat acute kidney injury with immediate dialysis based on creatinine alone', 'The immediate issue is shock; a rise in creatinine alone does not establish an urgent dialysis indication.'],
         ],
-        correctAnswer: 1,
-        explanation:
-          'CNS symptoms require head imaging before LP to rule out mass lesion. CT first, then LP for CSF analysis including cryptococcal antigen and toxoplasma PCR if available.',
+        correct: 1, clue: 'Hypotension and organ dysfunction are present now.',
+        objective: 'Treat hypoperfusion immediately and reassess rather than using a rigid sequential checklist.', sources: [adultSepsis],
       },
       {
-        question:
-          'CSF shows: Opening pressure 35 cm H2O, WBC 25, protein 80, glucose 30, cryptococcal antigen positive. What is the diagnosis?',
+        question: 'After initial fluid, MAP remains about 60 mm Hg with poor perfusion. Which vasopressor is first line for adult septic shock?',
         options: [
-          'Bacterial meningitis',
-          'Viral meningitis',
-          'Cryptococcal meningitis',
-          'Toxoplasma encephalitis',
+          ['Dopamine', 'Norepinephrine is preferred to dopamine as the initial agent.'],
+          ['Norepinephrine', 'Persistent hypotension warrants vasopressor support; norepinephrine is the first-line adult agent.'],
+          ['No vasopressor until the source is identified', 'Hypoperfusion needs treatment regardless of whether the source is known.'],
         ],
-        correctAnswer: 2,
-        explanation:
-          'Elevated opening pressure with positive CSF cryptococcal antigen confirms cryptococcal meningitis. Elevated opening pressure is common and requires management.',
+        correct: 1, clue: 'Persistent low MAP and poor perfusion after initial fluid.',
+        objective: 'Identify the first-line adult vasopressor for septic shock.', sources: [adultSepsis],
       },
     ],
   },
   {
-    id: 3,
-    title: 'Necrotizing Soft Tissue Infection',
-    category: 'Skin Infections',
-    difficulty: 'Advanced',
-    initialPresentation:
-      'A 45-year-old diabetic woman presents with rapidly worsening right leg pain and swelling for 1 day. Exam shows erythema with dusky discoloration, hemorrhagic bullae, and severe pain with minimal palpation. Temp 39°C, HR 115, BP 100/60.',
+    id: 'peds-uti', title: 'The urine culture is not the dipstick', audience: 'Pediatric', topic: 'UTI',
+    initial: 'A previously healthy 3-year-old has fever and dysuria, appears well and can drink. A properly collected urine specimen can be obtained before treatment.',
+    takeHome: 'Collect a reliable culture before treatment when possible. Document who will review it and update the family.',
     steps: [
       {
-        question: 'What is the most likely diagnosis?',
-        options: ['Cellulitis', 'Deep vein thrombosis', 'Necrotizing fasciitis', 'Simple abscess'],
-        correctAnswer: 2,
-        explanation:
-          'Pain out of proportion, hemorrhagic bullae, dusky discoloration, and rapid progression are red flags for necrotizing fasciitis.',
+        question: 'An initial urinalysis is suggestive. What establishes the diagnosis and allows therapy to be narrowed or stopped?',
+        options: [
+          ['A repeat dipstick only', 'The dipstick helps estimate probability; it does not identify the organism or establish culture confirmation.'],
+          ['A properly collected urine culture, interpreted with symptoms and urinalysis', 'Culture should be obtained before antibiotics if possible. Interpret growth in the context of specimen quality, symptoms and inflammatory findings.'],
+          ['A renal ultrasound', 'Imaging may address selected anatomic questions; it does not confirm a UTI.'],
+        ],
+        correct: 1, clue: 'You can obtain an adequate pre-treatment specimen.',
+        objective: 'Distinguish UA screening from confirmation and culture-directed follow-up.', sources: [uti, utiDiagnosis],
       },
       {
-        question: 'What is the most appropriate next step?',
+        question: 'After empiric treatment is prescribed, the adequate pre-antibiotic culture finalizes negative. The child is well and has no other antibiotic indication. What closes the loop?',
         options: [
-          'Start oral antibiotics and discharge',
-          'Obtain MRI to confirm diagnosis',
-          'Immediate surgical consultation for exploration/debridement',
-          'Observe for 24 hours with IV antibiotics',
+          ['Continue the original plan without calling the family', 'Continuing a course automatically can prolong unnecessary antibiotic exposure.'],
+          ['Treat for a more resistant organism', 'A negative culture from a reliable pre-treatment sample is not evidence of resistance.'],
+          ['Reassess, stop the empiric UTI antibiotic and update the family', 'The AAP guideline advises stopping empiric antibiotics when the culture is negative unless the sample was obtained after exposure. Persistent illness warrants reassessment.'],
         ],
-        correctAnswer: 2,
-        explanation:
-          'Necrotizing fasciitis is a surgical emergency. Do not delay surgery for imaging. Clinical suspicion warrants immediate surgical consultation.',
+        correct: 2, clue: 'A reliable specimen was collected before the first antibiotic dose.',
+        objective: 'Act on a final culture rather than treating an abnormal UA as the diagnosis.', sources: [uti],
+      },
+    ],
+  },
+  {
+    id: 'adult-hiv-cns', title: 'CNS symptoms in advanced HIV', audience: 'Adult', topic: 'HIV',
+    initial: 'A 32-year-old adult with newly diagnosed HIV (CD4 45 cells/mm³) has 2 weeks of headache, fever and worsening confusion. ART has not yet started.',
+    takeHome: 'The neurological syndrome narrows the differential. Measure and address opening pressure in cryptococcal meningitis.',
+    steps: [
+      {
+        question: 'Which diagnoses are high-priority considerations?',
+        options: [
+          ['Pneumocystis pneumonia and esophageal candidiasis', 'Those are important with advanced HIV, but do not explain this primarily CNS presentation.'],
+          ['Cryptococcal meningitis and toxoplasma encephalitis', 'Both are important considerations with advanced HIV and subacute CNS symptoms. Keep other serious causes of CNS disease in the differential.'],
+          ['Disseminated MAC as the only plausible diagnosis', 'Low CD4 alone does not establish an organism; the neurological syndrome matters.'],
+        ],
+        correct: 1, clue: 'Severe immunosuppression with a new subacute neurological syndrome.',
+        objective: 'Use clinical localization as well as immune status to prioritize opportunistic infections.', sources: [cryptococcus, toxoplasma],
       },
       {
-        question: 'What empiric antibiotic coverage is appropriate while awaiting surgery?',
+        question: 'A new focal deficit raises concern for a mass lesion. Which diagnostic plan is most appropriate?',
         options: [
-          'Narrow coverage for Staph only',
-          'Antifungal therapy alone',
-          'Broad coverage: Staph, Strep, Gram-negatives, and anaerobes',
-          'No antibiotics until culture results',
+          ['Urgent brain imaging; obtain CSF with opening pressure and targeted studies when safe', 'Imaging evaluates mass effect. When lumbar puncture is safe, CSF studies and opening pressure help establish the diagnosis and identify pressure-related complications.'],
+          ['Perform an immediate LP without considering the focal deficit', 'A focal deficit raises concern for a lesion with mass effect, which changes the safety assessment.'],
+          ['Use serum cryptococcal antigen as a complete substitute for CSF', 'Serum testing can inform the differential but does not assess CSF pressure or fully evaluate symptomatic CNS disease.'],
         ],
-        correctAnswer: 2,
-        explanation:
-          'Necrotizing infections can be polymicrobial. Empiric broad-spectrum coverage is essential while awaiting surgical cultures.',
+        correct: 0, clue: 'A focal deficit specifically raises concern for a lesion with mass effect.',
+        objective: 'Plan neuroimaging and a safe, targeted CSF evaluation.', sources: [cryptococcus, toxoplasma],
+      },
+      {
+        question: 'Imaging shows no mass effect and LP is safe. Opening pressure is 35 cm H₂O; CSF cryptococcal antigen is positive. What fits best?',
+        options: [
+          ['Toxoplasma encephalitis alone', 'Toxoplasma is in the differential but does not account for a positive CSF cryptococcal antigen.'],
+          ['Viral meningitis alone', 'Positive CSF cryptococcal antigen in this presentation identifies a different cause.'],
+          ['Cryptococcal meningitis with raised intracranial pressure', 'Provide urgent antifungal and pressure management with specialist input; elevated pressure may require therapeutic CSF drainage.'],
+        ],
+        correct: 2, clue: 'Positive CSF cryptococcal antigen with substantially raised opening pressure.',
+        objective: 'Recognize the diagnosis and the separate urgency of intracranial pressure management.', sources: [cryptococcus],
+      },
+    ],
+  },
+  {
+    id: 'adult-nsti', title: 'Rapidly progressive limb pain', audience: 'Adult', topic: 'Skin infections',
+    initial: 'An adult with diabetes has rapidly worsening leg pain and swelling, fever, dusky skin, hemorrhagic bullae and severe pain with light palpation.',
+    takeHome: 'A concerning tempo and disproportionate pain can justify immediate surgical involvement before imaging confirmation.',
+    steps: [
+      {
+        question: 'Which diagnosis must be prioritized?',
+        options: [
+          ['Simple cellulitis', 'The pace, bullae and disproportionate pain suggest deep involvement beyond uncomplicated cellulitis.'],
+          ['Necrotizing soft-tissue infection', 'Rapid progression, systemic illness, severe pain and dusky or bullous skin warrant urgent evaluation for necrotizing infection.'],
+          ['Simple abscess', 'A localized purulent collection does not account for this rapidly progressive pattern.'],
+        ],
+        correct: 1, clue: 'Rapid progression plus disproportionate pain and hemorrhagic bullae.',
+        objective: 'Differentiate necrotizing infection red flags from routine cellulitis findings.', sources: [ssti],
+      },
+      {
+        question: 'What should happen before waiting for MRI confirmation?',
+        options: [
+          ['Obtain immediate surgical consultation and begin resuscitation and broad IV treatment', 'This is a surgical emergency. Begin parallel treatment while arranging prompt surgical assessment and likely source control.'],
+          ['Observe on IV antibiotics alone', 'Antibiotics alone are not adequate source control for necrotizing infection.'],
+          ['Use a low severity score to rule it out', 'A score cannot override a high-risk clinical presentation or safely defer surgical assessment.'],
+        ],
+        correct: 0, clue: 'Management urgency is driven by clinical suspicion, not an imaging prerequisite.',
+        objective: 'Start parallel surgical and medical management without a diagnostic delay.', sources: [ssti],
+      },
+      {
+        question: 'Which coverage best fits initial empiric treatment pending operative findings and cultures?',
+        options: [
+          ['Narrow streptococcal coverage alone', 'Initial therapy must cover polymicrobial and monomicrobial possibilities.'],
+          ['No antibiotics until definitive cultures', 'Get informative cultures when possible, but do not delay urgent therapy.'],
+          ['Broad coverage including MRSA, streptococci, gram-negatives and anaerobes', 'Start broad in suspected necrotizing infection, then tailor therapy to operative findings and microbiology.'],
+        ],
+        correct: 2, clue: 'At the first decision, the cause may be mixed or monomicrobial.',
+        objective: 'Understand why empiric therapy starts broad and narrows after source control and microbiology.', sources: [ssti],
       },
     ],
   },
 ]
 
+const HISTORY_KEY = 'id-master.cases-2026-11-v1'
+
+function loadHistory(): Record<string, number> {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(HISTORY_KEY) ?? '{}')
+    if (typeof parsed !== 'object' || !parsed || Array.isArray(parsed)) return {}
+    const byCase = parsed as Record<string, unknown>
+    return Object.fromEntries(cases.flatMap(({ id, steps }) => {
+      const value = byCase[id]
+      return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= steps.length ? [[id, value]] : []
+    }))
+  } catch {
+    return {}
+  }
+}
+
 export function CasesPage() {
-  const [selectedCase, setSelectedCase] = useState<number | null>(null)
-  const [currentStep, setCurrentStep] = useState(0)
-  const [selectedAnswers, setSelectedAnswers] = useState<(number | null)[]>([])
-  const [showExplanation, setShowExplanation] = useState(false)
+  const [audience, setAudience] = useState<'All' | 'Pediatric' | 'Adult'>('All')
+  const [selected, setSelected] = useState<ClinicalCase | null>(null)
+  const [step, setStep] = useState(0)
+  const [answers, setAnswers] = useState<number[]>([])
+  const [finished, setFinished] = useState(false)
+  const [reviewing, setReviewing] = useState(false)
+  const [history, setHistory] = useState(loadHistory)
+  const heading = useRef<HTMLHeadingElement>(null)
+  const shouldFocus = useRef(false)
 
-  const startCase = (caseId: number) => {
-    setSelectedCase(caseId)
-    setCurrentStep(0)
-    setSelectedAnswers([])
-    setShowExplanation(false)
-  }
+  useEffect(() => {
+    try { localStorage.setItem(HISTORY_KEY, JSON.stringify(history)) } catch { /* optional device storage */ }
+  }, [history])
 
-  const selectAnswer = (answerIndex: number) => {
-    const newAnswers = [...selectedAnswers]
-    newAnswers[currentStep] = answerIndex
-    setSelectedAnswers(newAnswers)
-    setShowExplanation(false)
-  }
-
-  const checkAnswer = () => {
-    setShowExplanation(true)
-  }
-
-  const nextStep = () => {
-    if (selectedCase !== null && currentStep < clinicalCases[selectedCase - 1].steps.length - 1) {
-      setCurrentStep(currentStep + 1)
-      setShowExplanation(false)
+  useEffect(() => {
+    if (shouldFocus.current) {
+      heading.current?.focus()
+      shouldFocus.current = false
     }
+  }, [selected, step, finished, reviewing])
+
+  const start = (item: ClinicalCase) => {
+    shouldFocus.current = true
+    setSelected(item); setStep(0); setAnswers([]); setFinished(false); setReviewing(false)
+  }
+  const backToList = () => {
+    shouldFocus.current = true
+    setSelected(null)
   }
 
-  const resetCase = () => {
-    setSelectedCase(null)
-    setCurrentStep(0)
-    setSelectedAnswers([])
-    setShowExplanation(false)
-  }
-
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case 'Beginner':
-        return 'bg-green-500'
-      case 'Intermediate':
-        return 'bg-yellow-500'
-      case 'Advanced':
-        return 'bg-red-500'
-      default:
-        return 'bg-gray-500'
-    }
-  }
-
-  if (selectedCase === null) {
-    return (
-      <div className="space-y-6 max-w-4xl mx-auto">
-        <div>
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Clinical Cases</h1>
-          <p className="text-muted-foreground mt-2">
-            Interactive case-based learning scenarios
-          </p>
-        </div>
-
-        <div className="space-y-4">
-          {clinicalCases.map((clinicalCase) => (
-            <Card key={clinicalCase.id} className="hover:border-primary transition-colors">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle>{clinicalCase.title}</CardTitle>
-                    <CardDescription className="mt-2">
-                      {clinicalCase.initialPresentation}
-                    </CardDescription>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 mt-3">
-                  <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
-                    {clinicalCase.category}
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <div
-                      className={`h-2 w-2 rounded-full ${getDifficultyColor(
-                        clinicalCase.difficulty
-                      )}`}
-                    />
-                    <span className="text-xs text-muted-foreground">
-                      {clinicalCase.difficulty}
-                    </span>
-                  </div>
-                  <span className="text-xs text-muted-foreground">
-                    {clinicalCase.steps.length} steps
-                  </span>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <Button onClick={() => startCase(clinicalCase.id)} className="w-full md:w-auto">
-                  Start Case
-                  <ChevronRight className="ml-2 h-4 w-4" />
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>How to Use Clinical Cases</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm text-muted-foreground">
-            <p>
-              Each case presents a realistic clinical scenario with multiple decision points. Work
-              through each step, select your answer, and review the explanation to understand the
-              reasoning.
-            </p>
-            <p>
-              These cases are designed to reinforce key concepts from the modules and develop
-              clinical reasoning skills. Take your time to think through each question before
-              selecting an answer.
-            </p>
-            <p className="text-xs italic">
-              Remember: These are educational scenarios. Always refer to current guidelines and
-              consult with supervisors for real patient care.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
-  const currentCase = clinicalCases[selectedCase - 1]
-  const step = currentCase.steps[currentStep]
-  const selectedAnswer = selectedAnswers[currentStep]
-  const isCorrect = selectedAnswer === step.correctAnswer
-  const isLastStep = currentStep === currentCase.steps.length - 1
-
-  return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">{currentCase.title}</h1>
-          <p className="text-sm text-muted-foreground">
-            Step {currentStep + 1} of {currentCase.steps.length}
-          </p>
-        </div>
-        <Button variant="outline" onClick={resetCase}>
-          Exit Case
-        </Button>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Case Presentation</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">{currentCase.initialPresentation}</p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{step.question}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            {step.options.map((option, index) => (
-              <button
-                key={index}
-                onClick={() => selectAnswer(index)}
-                disabled={showExplanation}
-                className={`w-full p-3 text-left border rounded-lg transition-colors ${
-                  selectedAnswer === index
-                    ? 'border-primary bg-primary/10'
-                    : 'hover:bg-muted/50'
-                } ${showExplanation ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
-              >
-                <div className="flex items-start space-x-3">
-                  <div
-                    className={`h-5 w-5 rounded-full border-2 flex-shrink-0 mt-0.5 ${
-                      selectedAnswer === index ? 'border-primary bg-primary' : 'border-muted-foreground'
-                    }`}
-                  >
-                    {selectedAnswer === index && (
-                      <div className="h-full w-full flex items-center justify-center">
-                        <div className="h-2 w-2 rounded-full bg-background" />
-                      </div>
-                    )}
-                  </div>
-                  <span className="text-sm">{option}</span>
-                </div>
-              </button>
-            ))}
-          </div>
-
-          {!showExplanation && selectedAnswer !== null && (
-            <Button onClick={checkAnswer} className="w-full md:w-auto">
-              Check Answer
-            </Button>
-          )}
-
-          {showExplanation && (
-            <div
-              className={`p-4 border-2 rounded-lg ${
-                isCorrect
-                  ? 'bg-green-500/10 border-green-500/20'
-                  : 'bg-red-500/10 border-red-500/20'
-              }`}
-            >
-              <p className="font-semibold mb-2">
-                {isCorrect ? '✓ Correct!' : '✗ Incorrect'}
-              </p>
-              <p className="text-sm text-muted-foreground mb-2">
-                <span className="font-medium">Correct answer:</span>{' '}
-                {step.options[step.correctAnswer]}
-              </p>
-              <p className="text-sm text-muted-foreground">{step.explanation}</p>
-            </div>
-          )}
-
-          {showExplanation && !isLastStep && (
-            <Button onClick={nextStep} className="w-full md:w-auto">
-              Next Step
-              <ChevronRight className="ml-2 h-4 w-4" />
-            </Button>
-          )}
-
-          {showExplanation && isLastStep && (
-            <div className="space-y-3">
-              <div className="p-4 border rounded-lg bg-blue-500/10">
-                <p className="font-semibold mb-2">Case Complete!</p>
-                <p className="text-sm text-muted-foreground">
-                  You've worked through all steps of this case. Review the explanations to
-                  reinforce key concepts.
-                </p>
-              </div>
-              <Button onClick={resetCase} className="w-full md:w-auto">
-                Return to Cases
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <div className="flex gap-2">
-        {currentCase.steps.map((_, index) => (
-          <div
-            key={index}
-            className={`h-2 flex-1 rounded-full ${
-              index < currentStep
-                ? 'bg-primary'
-                : index === currentStep
-                ? 'bg-primary/50'
-                : 'bg-muted'
-            }`}
-          />
+  if (!selected) return (
+    <div className="mx-auto max-w-4xl space-y-6">
+      <header>
+        <h1 ref={heading} tabIndex={-1} className="text-3xl font-bold tracking-tight md:text-4xl">Clinical Cases</h1>
+        <p className="mt-2 text-muted-foreground">Work through each decision as new information arrives.</p>
+      </header>
+      <div className="flex flex-wrap gap-2" role="group" aria-label="Case audience">
+        {(['All', 'Pediatric', 'Adult'] as const).map((scope) => (
+          <Button key={scope} type="button" variant={scope === audience ? 'default' : 'outline'}
+            aria-pressed={scope === audience} onClick={() => setAudience(scope)}>{scope}</Button>
         ))}
       </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        {cases.filter((item) => audience === 'All' || item.audience === audience).map((item) => (
+          <Card key={item.id} className="flex flex-col">
+            <CardHeader className="grow">
+              <span className="mb-2 text-xs font-semibold uppercase tracking-wide text-primary">{item.audience} · {item.topic}</span>
+              <CardTitle className="text-xl leading-tight">{item.title}</CardTitle>
+              <CardDescription>
+                {item.steps.length} decisions{history[item.id] === undefined ? '' : ` · Best: ${history[item.id]}/${item.steps.length}`}
+              </CardDescription>
+            </CardHeader>
+            <CardContent><Button type="button" aria-label={`Start case: ${item.title}`} onClick={() => start(item)}>Start case</Button></CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  )
+
+  const score = selected.steps.filter((decision, i) => answers[i] === decision.correct).length
+  return (
+    <div className="mx-auto max-w-4xl space-y-5">
+      <Button type="button" variant="outline" onClick={backToList}>All cases</Button>
+      <header>
+        <p className="text-xs font-semibold uppercase tracking-wide text-primary">{selected.audience} · {selected.topic}</p>
+        <h1 ref={heading} tabIndex={-1} className="mt-2 text-3xl font-bold tracking-tight">{selected.title}</h1>
+        <p className="mt-2 text-muted-foreground">{selected.initial}</p>
+      </header>
+      {finished ? (
+        <Card>
+          <CardHeader><CardTitle>Case complete: {score}/{selected.steps.length} correct</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <p><strong>Take-home:</strong> {selected.takeHome}</p>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" onClick={() => {
+                shouldFocus.current = true
+                setReviewing(true); setStep(0); setFinished(false)
+              }}>Review decisions</Button>
+              <Button type="button" variant="outline" onClick={() => start(selected)}>Try again</Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <section className="space-y-3" aria-label="Current decision">
+          <h2 className="text-sm font-semibold">{reviewing ? 'Review' : 'Decision'} {step + 1} of {selected.steps.length}</h2>
+          <DecisionCard key={`${selected.id}-${step}-${reviewing}`} decision={selected.steps[step]}
+            committed={answers[step]} onCommit={(answer) => setAnswers((previous) => previous.length === step ? [...previous, answer] : previous)}
+            nextAction={(
+              <Button type="button" onClick={() => {
+                shouldFocus.current = true
+                if (step === selected.steps.length - 1) {
+                  if (!reviewing) setHistory((previous) => ({ ...previous, [selected.id]: Math.max(previous[selected.id] ?? 0, score) }))
+                  setFinished(true)
+                } else setStep((value) => value + 1)
+              }}>
+                {step === selected.steps.length - 1 ? 'See case summary' : 'Next decision'}
+              </Button>
+            )} />
+        </section>
+      )}
     </div>
   )
 }
