@@ -96,6 +96,16 @@ try {
   await page.getByRole('button', { name: 'Check answer' }).click()
   await page.getByText('Decisive clue:', { exact: true }).waitFor()
 
+  const restricted = await browser.newPage()
+  await restricted.addInitScript(() => {
+    Storage.prototype.getItem = () => { throw new DOMException('Storage disabled', 'SecurityError') }
+    Storage.prototype.setItem = () => { throw new DOMException('Storage disabled', 'SecurityError') }
+  })
+  await restricted.goto(base + '/settings')
+  await restricted.getByRole('button', { name: 'Switch to light mode' }).click()
+  await restricted.waitForFunction(() => document.documentElement.classList.contains('light'))
+  await restricted.close()
+
   const icon = await page.request.get(base + '/id-master.svg')
   assert(icon.ok() && icon.headers()['content-type']?.includes('svg'))
   console.log('Passed keyboard navigation, theme persistence, audience routing and Back, pneumonia answer lock/reset, and favicon')

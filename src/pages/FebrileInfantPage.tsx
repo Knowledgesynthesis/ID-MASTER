@@ -74,7 +74,7 @@ export function FebrileInfantPage() {
       <header>
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Febrile Infant</h1>
         <p className="text-muted-foreground mt-2">
-          Learn how eligibility and age change the initial evaluation. Synthetic cases; not a bedside decision tool.
+          Learn how eligibility and age change the initial evaluation.
         </p>
       </header>
 

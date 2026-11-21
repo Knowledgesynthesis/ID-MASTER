@@ -84,7 +84,7 @@ function SepsisContent({ population, onPopulationChange }: {
       <header>
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Sepsis &amp; Septic Shock</h1>
         <p className="text-muted-foreground mt-2">
-          Compare age-specific recognition and initial management. Synthetic examples for learning, not a bedside calculator.
+          Compare age-specific recognition and initial management.
         </p>
       </header>
 

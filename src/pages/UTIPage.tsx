@@ -109,7 +109,7 @@ function UTIContent({ population, onPopulationChange }: {
       <header>
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight">UTI &amp; Pyelonephritis</h1>
         <p className="text-muted-foreground mt-2">
-          Compare bladder infection, pyelonephritis and bacteriuria. Synthetic cases for learning, not a prescribing tool.
+          Compare bladder infection, pyelonephritis and bacteriuria.
         </p>
       </header>
 
