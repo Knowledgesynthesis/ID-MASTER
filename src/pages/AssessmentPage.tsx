@@ -20,9 +20,9 @@ interface Question extends Decision {
 }
 
 const strep = ['CDC: Group A strep pharyngitis', 'https://www.cdc.gov/group-a-strep/hcp/clinical-guidance/strep-throat.html'] as const
-const pediatricUti = ['AAP 2026 pediatric UTI guideline', 'https://doi.org/10.1542/peds.2026-078565'] as const
-const adultSepsis = ['Surviving Sepsis Campaign: Adults (2026)', 'https://doi.org/10.1097/CCM.0000000000007075'] as const
-const pediatricSepsis = ['Surviving Sepsis Campaign: Children (2026)', 'https://doi.org/10.1097/PCC.0000000000003927'] as const
+const pediatricUti = ['AAP 2026 pediatric UTI guideline', 'https://publications.aap.org/pediatrics/article/158/4/e2026078565/209460/Clinical-Practice-Guideline-for-the-Diagnosis-and'] as const
+const adultSepsis = ['Surviving Sepsis Campaign: Adults (2026)', 'https://www.sccm.org/clinical-resources/guidelines/guidelines/surviving-sepsis-campaign-international-guidelines-for-management-of-sepsis-and-septic-shock-2026'] as const
+const pediatricSepsis = ['Surviving Sepsis Campaign: Children (2026)', 'https://www.sccm.org/clinical-resources/guidelines/guidelines/surviving-sepsis-campaign-international-guidelines-for-the-management-of-sepsis-and-septic-shock-in'] as const
 const bone = ['PIDS/IDSA pediatric osteomyelitis guideline', 'https://www.idsociety.org/practice-guideline/bone-and-joint-infections---osteomyelitis/'] as const
 
 const questions: readonly Question[] = [
@@ -39,7 +39,7 @@ const questions: readonly Question[] = [
   },
   {
     id: 'strep-adult', audience: 'Adult', topic: 'Pharyngitis',
-    question: 'A 28-year-old with the same compatible exam and no complicating features has a negative group A strep rapid antigen test. What next?',
+    question: 'A 28-year-old with fever and tonsillar exudate but no cough, rhinorrhea or oral ulcers has a negative group A strep rapid antigen test. What next?',
     options: [
       ['Do not routinely get a backup throat culture', 'After a negative antigen test, routine backup culture is not indicated in adults.'],
       ['Order a backup throat culture in every case', 'That is the routine branch for symptomatic children, not adults.'],

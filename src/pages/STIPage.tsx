@@ -7,6 +7,8 @@ const cdc = 'https://www.cdc.gov/std/treatment-guidelines/'
 const source = {
   syphilis: cdc + 'syphilis.htm',
   neuro: cdc + 'neurosyphilis.htm',
+  tertiary: cdc + 'tertiary-syphilis.htm',
+  hpv: 'https://www.cdc.gov/hpv/hcp/vaccination-considerations/',
   pregnancy: cdc + 'syphilis-pregnancy.htm',
   congenital: cdc + 'congenital-syphilis.htm',
   gc: cdc + 'gonorrhea-adults.htm',
@@ -141,6 +143,7 @@ export function STIPage() {
         <CardHeader><CardTitle>Syphilis: syndrome, serology, stage</CardTitle></CardHeader>
         <CardContent className="space-y-2 text-sm">
           <p><strong>Primary:</strong> classically a painless chancre, but lesions can be multiple, atypical or painful. <strong>Secondary:</strong> systemic illness with findings such as diffuse rash (sometimes palms and soles), mucocutaneous lesions, or lymphadenopathy. <strong>Latent:</strong> reactive serology without manifestations; titer alone does not establish early latent disease. <Source href={source.syphilis}>CDC testing and stages</Source></p>
+          <p><strong>Tertiary disease:</strong> gummatous or cardiovascular involvement requires a separate workup. <Source href={source.tertiary}>CDC tertiary syphilis guidance</Source></p>
           <p><strong>Look for eyes, ears and neurologic features at any stage.</strong> Visual or auditory symptoms change the evaluation and management. <Source href={source.neuro}>CDC neurosyphilis, ocular and otic guidance</Source></p>
           <p>Follow quantitative RPR or VDRL with the same test type, preferably in the same laboratory. A fourfold titer change is two dilutions (for example, 1:32 to 1:8). Treponemal tests often remain reactive after treatment and do not measure treatment response. <Source href={source.syphilis}>CDC serology</Source></p>
         </CardContent>
@@ -162,10 +165,11 @@ export function STIPage() {
         </CardContent>
       </Card>
       <Card>
-        <CardHeader><CardTitle>Three pattern-recognition traps</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Other STI testing and prevention pearls</CardTitle></CardHeader>
         <CardContent className="space-y-2 text-sm">
           <p><strong>Genital HSV:</strong> when lesions are present, use a lesion NAAT (or culture if NAAT is unavailable), not routine serologic screening. <Source href={source.hsv}>HSV testing</Source></p>
           <p><strong>Trichomoniasis:</strong> classic discharge or cervical findings are not required. A negative wet mount does not reliably rule it out. <Source href={source.trich}>Testing options</Source></p>
+          <p><strong>HPV:</strong> vaccination prevents new infections, not existing lesions. Review routine pediatric and adolescent vaccination, catch-up through age 26, and shared decision-making for selected adults aged 27–45. <Source href={source.hpv}>CDC HPV vaccination</Source></p>
           <p><strong>LGV:</strong> proctocolitis can dominate the presentation; a recalled transient ulcer is not required. <Source href={source.lgv}>CDC LGV guidance</Source></p>
         </CardContent>
       </Card>

@@ -13,13 +13,13 @@ interface ClinicalCase {
   steps: readonly Decision[]
 }
 
-const adultSepsis = ['Surviving Sepsis Campaign: Adults (2026)', 'https://doi.org/10.1097/CCM.0000000000007075'] as const
-const pediatricSepsis = ['Surviving Sepsis Campaign: Children (2026)', 'https://doi.org/10.1097/PCC.0000000000003927'] as const
+const adultSepsis = ['Surviving Sepsis Campaign: Adults (2026)', 'https://www.sccm.org/clinical-resources/guidelines/guidelines/surviving-sepsis-campaign-international-guidelines-for-management-of-sepsis-and-septic-shock-2026'] as const
+const pediatricSepsis = ['Surviving Sepsis Campaign: Children (2026)', 'https://www.sccm.org/clinical-resources/guidelines/guidelines/surviving-sepsis-campaign-international-guidelines-for-the-management-of-sepsis-and-septic-shock-in'] as const
 const cryptococcus = ['NIH: Adult/adolescent cryptococcosis', 'https://clinicalinfo.hiv.gov/en/guidelines/hiv-clinical-guidelines-adult-and-adolescent-opportunistic-infections/cryptococcosis'] as const
 const toxoplasma = ['NIH: Adult/adolescent toxoplasma encephalitis', 'https://clinicalinfo.hiv.gov/en/guidelines/hiv-clinical-guidelines-adult-and-adolescent-opportunistic-infections/toxoplasmosis'] as const
 const ssti = ['IDSA: Skin and soft-tissue infections', 'https://www.idsociety.org/practice-guideline/skin-and-soft-tissue-infections/'] as const
-const uti = ['AAP 2026 pediatric UTI guideline', 'https://doi.org/10.1542/peds.2026-078565'] as const
-const utiDiagnosis = ['AAP 2026 companion diagnostic report', 'https://doi.org/10.1542/peds.2026-078566'] as const
+const uti = ['AAP 2026 pediatric UTI guideline', 'https://publications.aap.org/pediatrics/article/158/4/e2026078565/209460/Clinical-Practice-Guideline-for-the-Diagnosis-and'] as const
+const utiDiagnosis = ['AAP 2026 companion diagnostic report', 'https://publications.aap.org/pediatrics/article/158/4/e2026078566/209462/Urinary-Tract-Infection-Diagnosis-A-Companion-to'] as const
 
 const cases: readonly ClinicalCase[] = [
   {

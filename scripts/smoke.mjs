@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
-import { chromium } from 'playwright'
+const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright')
 
 const port = 4181
 const base = process.env.SMOKE_BASE_URL || `http://127.0.0.1:${port}`
