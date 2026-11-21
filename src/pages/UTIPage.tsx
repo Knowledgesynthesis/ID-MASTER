@@ -1,415 +1,195 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 
-interface UTICase {
-  id: number
-  presentation: string
-  findings: string[]
-  diagnosis: string
-  classification: 'uncomplicated' | 'complicated'
-  notes: string
+const adultCuti = 'https://www.idsociety.org/practice-guideline/complicated-urinary-tract-infections/'
+const adultAsb = 'https://www.idsociety.org/practice-guideline/asymptomatic-bacteriuria/'
+const adultCystitis = 'https://www.cdc.gov/antibiotic-use/hcp/clinical-care/adult-outpatient.html'
+const aapUti = 'https://doi.org/10.1542/peds.2026-078565'
+const aapAlgorithms = 'https://www.aap.org/en/patient-care/urinary-tract-infection-clinical-practice-guideline/algorithms-for-the-diagnosis-and-treatment-of-urinary-tract-infection-in-children-eight-days-to-five-years-of-age/'
+const febrileInfant = 'https://doi.org/10.1542/peds.2021-052228'
+const citationClass = 'text-primary underline underline-offset-2'
+
+const exercises = {
+  adult: [
+    {
+      label: 'Lower urinary symptoms',
+      stem: 'A healthy nonpregnant 25-year-old woman has new dysuria, frequency, positive nitrites and pyuria. She has no fever, flank tenderness or systemic symptoms.',
+      options: ['Acute uncomplicated cystitis is likely', 'Pyelonephritis is likely', 'This is asymptomatic bacteriuria'],
+      correct: 0,
+      explanation: 'The symptoms localize to the bladder, and the urinalysis supports the clinical impression. Pyuria or nitrites alone would not diagnose symptomatic UTI without this context.',
+      source: adultCystitis,
+      sourceLabel: 'CDC adult outpatient guidance',
+    },
+    {
+      label: 'Fever and flank pain',
+      stem: 'A 49-year-old with dysuria has fever, chills and flank tenderness. They are hemodynamically stable. What does the presentation suggest?',
+      options: ['Bladder-confined cystitis', 'Possible pyelonephritis: evaluate and send a urine culture', 'Asymptomatic bacteriuria'],
+      correct: 1,
+      explanation: 'Fever and flank tenderness suggest infection beyond the bladder. Obtain a culture, assess severity and obstruction risk, and choose an agent that penetrates the involved tissue; nitrofurantoin is not a pyelonephritis agent.',
+      source: adultCuti,
+      sourceLabel: 'IDSA complicated UTI guideline (2025)',
+    },
+    {
+      label: 'Positive culture without symptoms',
+      stem: 'An afebrile 71-year-old nonpregnant adult has no urinary symptoms or systemic signs of infection. An incidental urine culture grows E. coli. There is no planned urologic procedure.',
+      options: ['Do not treat the culture in this scenario', 'Treat with an oral antibiotic', 'Treat as pyelonephritis'],
+      correct: 0,
+      explanation: 'Bacteriuria alone, with or without pyuria, does not diagnose symptomatic UTI. Pregnancy and endoscopic urologic procedures with mucosal trauma are key exceptions.',
+      source: adultAsb,
+      sourceLabel: 'IDSA asymptomatic bacteriuria guideline (2019)',
+    },
+    {
+      label: 'Prenatal culture',
+      stem: 'At a prenatal visit, a pregnant adult with no urinary symptoms has a properly collected screening culture that grows 100,000 CFU/mL of E. coli.',
+      options: ['Manage as pyelonephritis', 'Review and treat confirmed asymptomatic bacteriuria using pregnancy-specific guidance', 'Ignore because there is no dysuria'],
+      correct: 1,
+      explanation: 'Pregnancy is a key exception to the usual rule against treating asymptomatic bacteriuria. Use culture-directed treatment appropriate for pregnancy.',
+      source: adultAsb,
+      sourceLabel: 'IDSA asymptomatic bacteriuria guideline (2019)',
+    },
+  ],
+  pediatric: [
+    {
+      label: 'Positive bag screen',
+      stem: 'An otherwise well 10-month-old with fever to 39.3°C and no obvious source has a bag urine screen with 1+ leukocyte esterase. What is the next specimen step?',
+      options: ['Culture the bag urine', 'Obtain catheter urine for urinalysis and culture', 'Do not obtain a culture unless leukocyte esterase reaches 2+'],
+      correct: 1,
+      explanation: 'In the AAP 2–24 month pathway, 1+ leukocyte esterase meets the screening threshold for a catheter specimen. A bag sample may screen but cannot confirm UTI. The threshold for presumptive antibiotics in this stable age group is higher than the screening threshold for culture.',
+      source: aapAlgorithms,
+      sourceLabel: 'AAP UTI algorithm, figure 2 (2026)',
+    },
+    {
+      label: 'Lower catheter colony count',
+      stem: 'A 15-month-old has a first febrile UTI presentation. A pre-antibiotic catheter sample has 18 white blood cells per high-power field and grows 20,000 CFU/mL of E. coli alone.',
+      options: ['The UA and catheter culture meet the AAP diagnostic thresholds', 'The culture is too low: every catheter sample needs 50,000 CFU/mL', 'The findings can only be interpreted with a positive bag culture'],
+      correct: 0,
+      explanation: 'With qualifying urinalysis inflammation, ≥10,000 CFU/mL of one uropathogen in catheter urine supports the diagnosis in this context. Clean-catch thresholds differ. Use the culture to narrow therapy and plan renal and bladder ultrasound for a first febrile UTI in a child younger than 5.',
+      source: aapUti,
+      sourceLabel: 'AAP UTI guideline, table 1 and key action statement 4 (2026)',
+    },
+    {
+      label: 'Febrile infant',
+      stem: 'A well-appearing term infant at 19 days of age has a rectal temperature of 38.2°C and a catheter urinalysis with pyuria. Does the urinalysis complete the fever evaluation?',
+      options: ['Yes: a urinary source rules out invasive infection', 'No: continue the age-specific febrile infant evaluation', 'Yes: use the outpatient pathway for otherwise well toddlers'],
+      correct: 1,
+      explanation: 'The febrile infant pathway still applies. For an eligible 19-day-old, this includes blood and CSF evaluation, parenteral antibiotics and inpatient monitoring; a positive UA does not remove those steps.',
+      source: febrileInfant,
+      sourceLabel: 'AAP well-appearing febrile infant guideline, 8–21 day pathway (2021)',
+    },
+  ],
 }
 
-const utiCases: UTICase[] = [
-  {
-    id: 1,
-    presentation: 'Young healthy woman with dysuria and frequency',
-    findings: [
-      'No fever',
-      'No CVA tenderness',
-      'No systemic symptoms',
-      'UA: WBC 50-100/hpf, positive nitrites, positive leukocyte esterase',
-    ],
-    diagnosis: 'Uncomplicated Cystitis',
-    classification: 'uncomplicated',
-    notes:
-      'Classic uncomplicated UTI in otherwise healthy woman. Short-course treatment appropriate.',
-  },
-  {
-    id: 2,
-    presentation: 'Woman with fever, flank pain, and nausea',
-    findings: [
-      'Fever 38.9°C',
-      'CVA tenderness',
-      'Dysuria',
-      'UA: WBC >100/hpf, WBC casts, bacteria',
-    ],
-    diagnosis: 'Acute Pyelonephritis',
-    classification: 'complicated',
-    notes:
-      'Upper UTI with systemic symptoms. CVA tenderness and WBC casts suggest kidney involvement.',
-  },
-  {
-    id: 3,
-    presentation: 'Diabetic man with urinary symptoms',
-    findings: [
-      'Poorly controlled diabetes',
-      'Dysuria and frequency',
-      'No fever',
-      'UA: WBC 100+/hpf, many bacteria',
-    ],
-    diagnosis: 'Complicated Cystitis',
-    classification: 'complicated',
-    notes:
-      'Complicated due to diabetes and male gender. Longer treatment duration needed.',
-  },
-  {
-    id: 4,
-    presentation: 'Pregnant woman with asymptomatic bacteriuria',
-    findings: [
-      'No symptoms',
-      'Prenatal screening urine culture',
-      'Culture: >100,000 CFU/mL E. coli',
-      'No pyuria on UA',
-    ],
-    diagnosis: 'Asymptomatic Bacteriuria in Pregnancy',
-    classification: 'complicated',
-    notes:
-      'Requires treatment in pregnancy due to risk of progression to pyelonephritis. Screen and treat all pregnant women.',
-  },
-]
-
 export function UTIPage() {
-  const [selectedCase, setSelectedCase] = useState(0)
-  const [showDiagnosis, setShowDiagnosis] = useState(false)
-  const currentCase = utiCases[selectedCase]
+  const [params, setParams] = useSearchParams()
+  const audience = params.get('audience')
+  const population = audience === 'pediatric' ? 'pediatric' : 'adult'
+  return (
+    <UTIContent key={population} population={population} onPopulationChange={(next) => {
+      if (next === audience) return
+      const nextParams = new URLSearchParams(params)
+      nextParams.set('audience', next)
+      setParams(nextParams, { replace: next === population })
+    }} />
+  )
+}
 
-  const getClassificationColor = (classification: string) => {
-    return classification === 'uncomplicated' ? 'bg-green-500' : 'bg-orange-500'
-  }
+function UTIContent({ population, onPopulationChange }: {
+  population: 'adult' | 'pediatric'
+  onPopulationChange: (population: 'adult' | 'pediatric') => void
+}) {
+  const [caseIndex, setCaseIndex] = useState(0)
+  const [answer, setAnswer] = useState<number | null>(null)
+  const adult = population === 'adult'
+  const currentCase = exercises[population][caseIndex]
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
-      <div>
-        <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
-          UTI & Pyelonephritis
-        </h1>
+      <header>
+        <h1 className="text-3xl md:text-4xl font-bold tracking-tight">UTI &amp; Pyelonephritis</h1>
         <p className="text-muted-foreground mt-2">
-          Classification, diagnosis, and management
+          Compare bladder infection, pyelonephritis and bacteriuria. Synthetic cases for learning, not a prescribing tool.
         </p>
+      </header>
+
+      <div role="group" aria-label="UTI population" className="flex flex-wrap gap-2">
+        {(['adult', 'pediatric'] as const).map((group) => (
+          <Button key={group} type="button" aria-pressed={population === group}
+            variant={population === group ? 'default' : 'outline'}
+            onClick={() => onPopulationChange(group)}>
+            {group === 'adult' ? 'Adults' : 'Children'}
+          </Button>
+        ))}
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Interactive UTI Navigator</CardTitle>
+          <CardTitle>{adult ? 'Adults: site and severity matter' : 'Children: age and specimen matter'}</CardTitle>
           <CardDescription>
-            Practice distinguishing UTI types and complexity
+            {adult ? (
+              <a className={citationClass} href={adultCuti}>IDSA complicated UTI guideline (2025)</a>
+            ) : (
+              <><a className={citationClass} href={aapUti}>AAP UTI guideline (2026)</a> · <a className={citationClass} href={aapAlgorithms}>Age-specific algorithms</a></>
+            )}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex gap-2 flex-wrap">
-            {utiCases.map((c, idx) => (
-              <Button
-                key={c.id}
-                variant={selectedCase === idx ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => {
-                  setSelectedCase(idx)
-                  setShowDiagnosis(false)
-                }}
-              >
-                Case {c.id}
+        <CardContent className="space-y-3 text-sm">
+          {adult ? (
+            <>
+              <p><strong>Bladder-confined symptoms.</strong> Dysuria, frequency or urgency without fever, flank pain or systemic illness can suggest cystitis. For acute uncomplicated cystitis in otherwise healthy nonpregnant premenopausal women, <a className={citationClass} href={adultCystitis}>CDC outpatient guidance</a> lists nitrofurantoin, trimethoprim-sulfamethoxazole if local resistance is below 20%, and fosfomycin as first-line options. This list is not a pyelonephritis regimen.</p>
+              <p><strong>Possible infection beyond the bladder.</strong> Fever, chills, flank pain or systemic illness prompt assessment for pyelonephritis, sepsis and obstruction. The IDSA 2025 classification emphasizes clinical evidence of extension beyond the bladder, not sex alone. Obtain a urine culture and tailor empiric therapy to severity, prior cultures and resistance risk, patient factors, and a relevant local antibiogram when septic.</p>
+              <p><strong>Narrow and reassess.</strong> Narrow to culture-directed effective therapy and consider an oral switch when improving and an effective oral agent is available. For many clinically improving patients with complicated UTI, IDSA conditionally suggests 5–7 days with a fluoroquinolone or 7 days with a non-fluoroquinolone, counted from the first day of effective therapy. Individualize when evidence is limited, such as severe sepsis, abscess, obstruction or suspected prostatitis.</p>
+              <p><strong>Read the urinalysis in context.</strong> Pyuria and leukocyte esterase indicate inflammation, not necessarily infection. Nitrite positivity supports bacteriuria; a negative nitrite does not rule out UTI. A positive culture can also reflect colonization or contamination.</p>
+              <p><strong>Bacteriuria is not enough.</strong> Do not treat asymptomatic bacteriuria routinely. Key exceptions are pregnancy and endoscopic urologic procedures with mucosal trauma. See the <a className={citationClass} href={adultAsb}>IDSA asymptomatic bacteriuria guideline</a> for special populations.</p>
+            </>
+          ) : (
+            <>
+              <p><strong>Scope.</strong> The 2026 AAP guideline covers children from 8 days to 5 years and its routine diagnostic scenarios focus on medically noncomplex children. It does not use race as a risk factor. Expedite evaluation for ill appearance, concern for pyelonephritis or known urinary tract abnormalities; do not apply a stable outpatient pathway to these presentations.</p>
+              <p><strong>8–60 days with fever.</strong> Use the <a className={citationClass} href={febrileInfant}>AAP febrile infant guideline</a> if eligible; suspected UTI does not replace evaluation for invasive bacterial infection. In the AAP infant UTI pathway, ≥5 white blood cells per high-power field (WBC/hpf) or trace or greater leukocyte esterase (LE) meets the inflammatory threshold. Confirm with catheter or suprapubic urine culture as directed by the age-specific pathway.</p>
+              <p><strong>2–24 months and older preschoolers.</strong> Evaluate for UTI in young children with fever without a source and in older children reporting urinary symptoms. In the specified well-appearing 2-month-to-5-year scenarios, ≥5 WBC/hpf or ≥1+ LE prompts culture; ≥10 WBC/hpf or ≥2+ LE supports presumptive antibiotics. Use catheter urine for culture in the 2–24 month algorithm; clean catch or catheter urine is appropriate in the older symptomatic group. Never culture a bag specimen to confirm UTI.</p>
+              <p><strong>Interpret culture in context.</strong> With qualifying inflammation and a single uropathogen, the catheter threshold is ≥10,000 colony-forming units per mL and the clean-catch threshold is ≥100,000. Review pending cultures promptly and narrow or stop empiric treatment as indicated; a culture collected after antibiotics needs particular caution.</p>
+              <p><strong>Treatment and follow-up.</strong> The guideline conditionally favors 3–5 days for low-risk afebrile cystitis at age 2 years or older and 5–7 days for selected low-risk febrile UTIs. Young infants and children with bacteremia, urinary anomalies or poor response may need longer. The AAP suggests starting parenteral therapy in infants aged 8–28 days, with early transition when appropriate; use the full febrile infant pathway for disposition. In children younger than 5 with a first febrile UTI, obtain renal and bladder ultrasound; do not routinely obtain a voiding cystourethrogram after a normal ultrasound unless risk factors or recurrence warrant it.</p>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Practice: choose the next step</CardTitle>
+          <CardDescription>Identify the right action for each synthetic scenario.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div role="group" aria-label="UTI practice case" className="flex flex-wrap gap-2">
+            {exercises[population].map(({ label }, index) => (
+              <Button key={label} type="button" aria-pressed={caseIndex === index}
+                variant={caseIndex === index ? 'default' : 'outline'}
+                onClick={() => { setCaseIndex(index); setAnswer(null) }}>
+                {label}
               </Button>
             ))}
           </div>
-
-          <div className="space-y-4">
-            <div className="p-4 border-2 rounded-lg">
-              <p className="font-semibold mb-2">Presentation:</p>
-              <p className="text-muted-foreground">{currentCase.presentation}</p>
-            </div>
-
-            <div>
-              <p className="font-semibold mb-2">Clinical & Laboratory Findings:</p>
-              <div className="space-y-2">
-                {currentCase.findings.map((finding, idx) => (
-                  <div key={idx} className="p-2 border rounded-lg bg-muted/50">
-                    <p className="text-sm text-muted-foreground">{finding}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <div
-                className={`h-3 w-3 rounded-full ${getClassificationColor(
-                  currentCase.classification
-                )}`}
-              />
-              <span className="font-medium capitalize">{currentCase.classification} UTI</span>
-            </div>
-
-            <Button
-              onClick={() => setShowDiagnosis(!showDiagnosis)}
-              className="w-full md:w-auto"
-            >
-              {showDiagnosis ? 'Hide' : 'Show'} Diagnosis & Notes
-            </Button>
-
-            {showDiagnosis && (
-              <div className="p-4 border rounded-lg bg-muted/50 space-y-2">
-                <p className="font-semibold text-lg">{currentCase.diagnosis}</p>
-                <p className="text-sm text-muted-foreground">{currentCase.notes}</p>
+          <p>{currentCase.stem}</p>
+          <div role="group" aria-label="Next step" className="grid gap-2">
+            {currentCase.options.map((label, index) => (
+              <Button key={label} type="button" aria-pressed={answer === index}
+                className="h-auto min-h-10 whitespace-normal text-left justify-start"
+                variant={answer === index ? 'default' : 'outline'} onClick={() => setAnswer(index)}>
+                {label}
+              </Button>
+            ))}
+          </div>
+          <div aria-live="polite">
+            {answer !== null && (
+              <div className="rounded-lg border bg-muted/50 p-4 space-y-1">
+                <p className="font-semibold">
+                  {answer === currentCase.correct ? 'Correct' : 'Best answer'}: {currentCase.options[currentCase.correct]}
+                </p>
+                <p className="text-sm">{currentCase.explanation}</p>
+                <a className={`text-sm ${citationClass}`} href={currentCase.source}>{currentCase.sourceLabel}</a>
               </div>
             )}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>UTI Classification</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="p-4 border-2 rounded-lg bg-green-500/10 border-green-500/20">
-              <h3 className="font-semibold mb-2">Uncomplicated UTI</h3>
-              <p className="text-sm text-muted-foreground mb-2">
-                Infection in otherwise healthy, non-pregnant women with normal urinary tract anatomy
-              </p>
-              <div className="text-sm text-muted-foreground space-y-1">
-                <p>• Premenopausal, non-pregnant women</p>
-                <p>• No recent instrumentation</p>
-                <p>• No known urologic abnormalities</p>
-                <p>• No immunocompromise</p>
-              </div>
-            </div>
-
-            <div className="p-4 border-2 rounded-lg bg-orange-500/10 border-orange-500/20">
-              <h3 className="font-semibold mb-2">Complicated UTI</h3>
-              <p className="text-sm text-muted-foreground mb-2">
-                UTI in setting of functional/anatomic abnormality or host factors that increase risk
-                of treatment failure
-              </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-muted-foreground">
-                <div>• Male gender</div>
-                <div>• Pregnancy</div>
-                <div>• Diabetes</div>
-                <div>• Immunosuppression</div>
-                <div>• Urinary obstruction</div>
-                <div>• Indwelling catheter</div>
-                <div>• Recent instrumentation</div>
-                <div>• Renal transplant</div>
-                <div>• Functional/anatomic abnormality</div>
-                <div>• Recent antibiotic use</div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Cystitis vs Pyelonephritis</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left p-2">Feature</th>
-                  <th className="text-left p-2">Cystitis (Lower UTI)</th>
-                  <th className="text-left p-2">Pyelonephritis (Upper UTI)</th>
-                </tr>
-              </thead>
-              <tbody className="text-muted-foreground">
-                <tr className="border-b">
-                  <td className="p-2 font-medium text-foreground">Location</td>
-                  <td className="p-2">Bladder</td>
-                  <td className="p-2">Kidney</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="p-2 font-medium text-foreground">Fever</td>
-                  <td className="p-2">Absent or low-grade</td>
-                  <td className="p-2">High fever {'>'} 38°C common</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="p-2 font-medium text-foreground">Systemic symptoms</td>
-                  <td className="p-2">Rare</td>
-                  <td className="p-2">Nausea, vomiting, malaise</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="p-2 font-medium text-foreground">CVA tenderness</td>
-                  <td className="p-2">Absent</td>
-                  <td className="p-2">Present (flank pain)</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="p-2 font-medium text-foreground">UA findings</td>
-                  <td className="p-2">Pyuria, bacteriuria, +/- hematuria</td>
-                  <td className="p-2">Pyuria, bacteriuria, WBC casts</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="p-2 font-medium text-foreground">Treatment duration</td>
-                  <td className="p-2">Short (3-7 days typically)</td>
-                  <td className="p-2">Longer (7-14 days)</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Urinalysis Interpretation</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <div className="p-3 border rounded-lg">
-              <p className="font-medium text-sm">Pyuria (WBCs in urine)</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {'>'} 10 WBC/hpf suggests infection but not specific. Can occur with sterile pyuria
-                (interstitial nephritis, TB, appendicitis near bladder).
-              </p>
-            </div>
-            <div className="p-3 border rounded-lg">
-              <p className="font-medium text-sm">Bacteriuria</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Bacteria visible on UA. Supports infection but can be contamination. Culture confirms.
-              </p>
-            </div>
-            <div className="p-3 border rounded-lg">
-              <p className="font-medium text-sm">Nitrites</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Positive suggests gram-negative bacteria (E. coli, Proteus, Klebsiella). Many
-                organisms don't produce nitrites (enterococcus, Staph saprophyticus).
-              </p>
-            </div>
-            <div className="p-3 border rounded-lg">
-              <p className="font-medium text-sm">Leukocyte Esterase</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Indicates WBCs in urine. Sensitive but not specific for UTI.
-              </p>
-            </div>
-            <div className="p-3 border rounded-lg bg-blue-500/10">
-              <p className="font-medium text-sm">WBC Casts</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Highly suggestive of pyelonephritis or interstitial nephritis. Indicates kidney
-                involvement.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Common Uropathogens</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {[
-              {
-                organism: 'Escherichia coli',
-                percentage: '70-95%',
-                notes: 'Most common cause of community-acquired UTI',
-              },
-              {
-                organism: 'Staphylococcus saprophyticus',
-                percentage: '5-15%',
-                notes: 'Young sexually active women, does not produce nitrites',
-              },
-              {
-                organism: 'Klebsiella pneumoniae',
-                percentage: '3-10%',
-                notes: 'More common in diabetics and catheterized patients',
-              },
-              {
-                organism: 'Proteus mirabilis',
-                percentage: '3-5%',
-                notes: 'Urease-producing, associated with stones',
-              },
-              {
-                organism: 'Enterococcus species',
-                percentage: '3-5%',
-                notes: 'More common in complicated UTI, catheterized patients',
-              },
-              {
-                organism: 'Pseudomonas aeruginosa',
-                percentage: '<5%',
-                notes: 'Complicated UTI, catheter-associated, structural abnormalities',
-              },
-            ].map((item) => (
-              <div key={item.organism} className="p-3 border rounded-lg">
-                <div className="flex items-start justify-between mb-1">
-                  <p className="font-medium text-sm">{item.organism}</p>
-                  <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
-                    {item.percentage}
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground">{item.notes}</p>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Special Populations</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <div className="p-3 border rounded-lg">
-              <p className="font-medium text-sm">Pregnancy</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Screen and treat asymptomatic bacteriuria (increased risk of pyelonephritis).
-                Avoid fluoroquinolones and tetracyclines. Nitrofurantoin safe except near term.
-              </p>
-            </div>
-            <div className="p-3 border rounded-lg">
-              <p className="font-medium text-sm">Men</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                All UTIs in men considered complicated. Consider prostatitis if recurrent. Longer
-                treatment duration typically needed (7-14 days minimum).
-              </p>
-            </div>
-            <div className="p-3 border rounded-lg">
-              <p className="font-medium text-sm">Catheter-Associated UTI (CAUTI)</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Only treat if symptomatic. Remove/replace catheter if possible. Broader organism
-                spectrum including Pseudomonas, Enterococcus, Candida.
-              </p>
-            </div>
-            <div className="p-3 border rounded-lg">
-              <p className="font-medium text-sm">Recurrent UTI</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                ≥2 infections in 6 months or ≥3 in 12 months. Consider imaging to rule out
-                structural abnormalities. Prophylaxis may be considered in some cases.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Red Flags - When to Suspect Complications</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ul className="space-y-2 text-sm">
-            {[
-              'Sepsis or septic shock',
-              'Lack of improvement after 48-72 hours of appropriate antibiotics',
-              'Recurrent pyelonephritis',
-              'Persistent fever despite treatment',
-              'Severe flank pain (consider obstructing stone, abscess)',
-              'Immunocompromised host',
-              'Recent urologic procedure',
-            ].map((flag) => (
-              <li key={flag} className="flex items-start space-x-2">
-                <div className="h-1.5 w-1.5 rounded-full bg-red-500 mt-1.5 flex-shrink-0" />
-                <span className="text-muted-foreground">{flag}</span>
-              </li>
-            ))}
-          </ul>
-          <div className="mt-4 p-3 border rounded-lg bg-yellow-500/10">
-            <p className="text-sm">
-              <span className="font-medium">Consider imaging (CT urogram or ultrasound) if:</span>{' '}
-              Suspected obstruction, abscess, emphysematous pyelonephritis, or lack of clinical
-              response.
-            </p>
           </div>
         </CardContent>
       </Card>
